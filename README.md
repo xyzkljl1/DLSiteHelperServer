@@ -1,0 +1,2 @@
+# DLSiteHelperServer
+DLSiteHelper的本地Server，用于查询商品记录和下载
