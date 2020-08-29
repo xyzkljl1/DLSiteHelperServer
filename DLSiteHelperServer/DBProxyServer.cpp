@@ -1,4 +1,9 @@
 #include "DBProxyServer.h"
+#include <boost/version.hpp>
+#include <boost/config.hpp>
+#include <boost/asio/buffer.hpp>
+#include <boost/http/reader/request.hpp>
+#include <boost/http/reader/response.hpp>
 #include <QTcpSocket>
 #include <QRegExp>
 #include <QDir>
@@ -6,11 +11,7 @@
 #include <string>
 #include <map>
 #include <set>
-#include <boost/version.hpp>
-#include <boost/config.hpp>
-#include <boost/asio/buffer.hpp>
-#include <boost/http/reader/request.hpp>
-#include <boost/http/reader/response.hpp>
+//必须放在boost后面
 #include "DataBase.h"
 DBProxyServer::DBProxyServer()
 {
@@ -67,8 +68,8 @@ void DBProxyServer::onReceived(QTcpSocket * conn)
 	reader.next();
 	if (reader.code() == boost::http::token::code::error_insufficient_data)
 	{
-		QRegExp reg_mark_eliminated("(/\?markEliminated)([RVJ]{1,2}[0-9]{3,6})");
-		QRegExp reg_mark_overlap("(/\?markOverlap)&main=([RVJ]{1,2}[0-9]{3,6})&sub=([RVJ]{1,2}[0-9]{3,6})&duplex=([0-9])");
+		QRegExp reg_mark_eliminated("(/\?markEliminated)([RVBJ]{1,2}[0-9]{3,6})");
+		QRegExp reg_mark_overlap("(/\?markOverlap)&main=([RVBJ]{1,2}[0-9]{3,6})&sub=([RVBJ]{1,2}[0-9]{3,6})&duplex=([0-9])");
 		QString tmp = QString::fromLocal8Bit(request_target.c_str());
 		if (request_target == "/?QueryInvalidDLSite")
 		{
@@ -254,7 +255,7 @@ void DBProxyServer::SyncLocalFile()
 		local_files.append(QDir(dir).entryList({ "*" }, QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name));
 	int ct = 0;
 	std::string cmd;
-	QRegExp reg("[RVJ]{1,2}[0-9]{3,6}");	
+	QRegExp reg("[RVBJ]{1,2}[0-9]{3,6}");	
 	DataBase database;
 	for (auto& dir : local_files)
 	{
