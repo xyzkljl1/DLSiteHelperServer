@@ -102,10 +102,12 @@
   <ItemGroup>
     <ClCompile Include="DataBase.cpp" />
     <ClCompile Include="DBProxyServer.cpp" />
+    <ClCompile Include="DLSiteClient.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DataBase.h" />
+    <QtMoc Include="DLSiteClient.h" />
     <QtMoc Include="DBProxyServer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

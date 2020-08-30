@@ -29,6 +29,9 @@
     <ClCompile Include="DBProxyServer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="DLSiteClient.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DataBase.h">
@@ -37,6 +40,9 @@
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="DBProxyServer.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="DLSiteClient.h">
       <Filter>Header Files</Filter>
     </QtMoc>
   </ItemGroup>

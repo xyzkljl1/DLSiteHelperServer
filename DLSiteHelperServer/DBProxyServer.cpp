@@ -1,4 +1,5 @@
 #include "DBProxyServer.h"
+#include "DLSiteClient.h"
 #include <boost/version.hpp>
 #include <boost/config.hpp>
 #include <boost/asio/buffer.hpp>
@@ -13,6 +14,10 @@
 #include <set>
 //必须放在boost后面
 #include "DataBase.h"
+
+const int SQL_LENGTH_LIMIT = 10000;
+#define WORK_NAME_EXP "[RVBJ]{1,2}[0-9]{3,6}"
+
 DBProxyServer::DBProxyServer()
 {
 	connect(this, &DBProxyServer::newConnection, this, &DBProxyServer::onConnected);
@@ -41,6 +46,7 @@ void DBProxyServer::onReceived(QTcpSocket * conn)
 	std::string method,host, request_target;
 	std::string att_name;
 	std::size_t nparsed = 0;
+	QByteArray data;
 	while (reader.code() != boost::http::token::code::end_of_message&&reader.code()!= boost::http::token::code::error_insufficient_data) {
 		switch (reader.code()) {
 		case boost::http::token::code::skip:break;
@@ -60,54 +66,43 @@ void DBProxyServer::onReceived(QTcpSocket * conn)
 				host = reader.value<boost::http::token::field_value>().to_string();
 			att_name = "";
 			break;
+		case boost::http::token::code::body_chunk:
+			data = byte_array.mid(nparsed,reader.token_size());
+			break;
 		}
 		nparsed += reader.token_size();
 		reader.next();
 	}
 	nparsed += reader.token_size();
 	reader.next();
+	
 	if (reader.code() == boost::http::token::code::error_insufficient_data)
 	{
-		QRegExp reg_mark_eliminated("(/\?markEliminated)([RVBJ]{1,2}[0-9]{3,6})");
-		QRegExp reg_mark_overlap("(/\?markOverlap)&main=([RVBJ]{1,2}[0-9]{3,6})&sub=([RVBJ]{1,2}[0-9]{3,6})&duplex=([0-9])");
+		QRegExp reg_mark_eliminated("(/\?markEliminated)(" WORK_NAME_EXP ")");
+		QRegExp reg_mark_overlap("(/\?markOverlap)&main=(" WORK_NAME_EXP ")&sub=(" WORK_NAME_EXP ")&duplex=([0-9])");
 		QString tmp = QString::fromLocal8Bit(request_target.c_str());
 		if (request_target == "/?QueryInvalidDLSite")
 		{
-			auto ret = GetAllInvalidWork();
-			QString response = QString("HTTP/1.1 200 OK\r\n"
-				"Cache-Control : private\r\n"
-				"Access-Control-Allow-Headers:*\r\n"
-				"Content-Length:%1\r\n"
-				"Content-Type : text/html; charset = utf-8\r\n\r\n"
-				"%2\r\n\r\n").arg(ret.size()).arg(ret.c_str());
-			conn->write(response.toLocal8Bit());
-			conn->waitForBytesWritten();
+			std::string ret = GetAllInvalidWork();
+			sendStandardResponse(conn, ret);
 			printf("Response Query Request\n");
 		}
 		else if (request_target == "/?QueryOverlapDLSite")
 		{
 			std::string ret = GetAllOverlapWork();
-			QString response = QString("HTTP/1.1 200 OK\r\n"
-				"Cache-Control : private\r\n"
-				"Access-Control-Allow-Headers:*\r\n"
-				"Content-Length:%1\r\n"
-				"Content-Type : text/html; charset = utf-8\r\n\r\n"
-				"%2\r\n\r\n").arg(ret.size()).arg(ret.c_str());
-			conn->write(response.toLocal8Bit());
-			conn->waitForBytesWritten();
+			sendStandardResponse(conn, ret);
 			printf("Response Query Request\n");
 		}
 		else if (request_target == "/?Download")
 		{
-			QString ret=QString("%1").arg(123);
-			QString response = QString("HTTP/1.1 200 OK\r\n"
-				"Cache-Control : private\r\n"
-				"Access-Control-Allow-Headers:*\r\n"
-				"Content-Length:%1\r\n"
-				"Content-Type : text/html; charset = utf-8\r\n\r\n"
-				"%2\r\n\r\n").arg(ret.size()).arg(ret);
-			conn->write(response.toLocal8Bit());
-			conn->waitForBytesWritten();
+			DownloadAll(data);
+			sendStandardResponse(conn, "123");
+			printf("Response Download Request\n");
+		}
+		else if (request_target == "/?UpdateBoughtItems")
+		{
+			std::string ret = UpdateBoughtItems(data);
+			sendStandardResponse(conn,ret);
 			printf("Response Download Request\n");
 		}
 		else if (reg_mark_eliminated.indexIn(tmp)>0)
@@ -116,7 +111,7 @@ void DBProxyServer::onReceived(QTcpSocket * conn)
 			{
 				std::string id = reg_mark_eliminated.cap(2).toLocal8Bit().toStdString();
 				DataBase database;
-				std::string  cmd = "INSERT IGNORE INTO works VALUES(\"" + id + "\",1,0);"
+				std::string  cmd = "INSERT IGNORE INTO works(id) VALUES(\"" + id + "\");"
 					"UPDATE works SET eliminated = 1 WHERE id = \"" + id + "\"; ";
 				mysql_query(&database.my_sql, cmd.c_str());
 				if (mysql_errno(&database.my_sql))
@@ -137,8 +132,8 @@ void DBProxyServer::onReceived(QTcpSocket * conn)
 			std::string sub_id = reg_mark_overlap.cap(3).toLocal8Bit().toStdString();
 			bool duplex = reg_mark_overlap.cap(4).toInt();
 			DataBase database;
-			std::string cmd = "INSERT IGNORE INTO works VALUES(\"" + main_id + "\",0,0);"
-							"INSERT IGNORE INTO works VALUES(\"" + sub_id + "\",0,0);"
+			std::string cmd = "INSERT IGNORE INTO works(id) VALUES(\"" + main_id + "\");"
+							"INSERT IGNORE INTO works(id) VALUES(\"" + sub_id + "\");"
 							"INSERT IGNORE INTO overlap VALUES(\"" + main_id + "\",\"" + sub_id + "\");"
 							+(duplex?std::string("INSERT IGNORE INTO overlap VALUES(\"" + sub_id + "\",\"" + main_id + "\");"): std::string());
 			mysql_query(&database.my_sql, cmd.c_str());
@@ -214,18 +209,49 @@ std::string DBProxyServer::GetAllOverlapWork()
 	return ret;
 }
 
+std::string DBProxyServer::UpdateBoughtItems(const QByteArray & data)
+{
+	DataBase database;
+	QRegExp reg(WORK_NAME_EXP);
+	std::string	cmd;
+	for (const auto& byte : data.split(' '))
+	{
+		std::string id = QString(byte).toLocal8Bit().toStdString();
+		if (reg.exactMatch(QString(byte)))
+			cmd += "INSERT IGNORE INTO works(id) VALUES(\"" + id + "\");"
+			"UPDATE works SET bought = 1 WHERE id = \"" + id + "\"; ";
+		if (cmd.length() > SQL_LENGTH_LIMIT)
+			database.SendQuery(cmd);
+	}
+	if (cmd.length() > 0)			
+		database.SendQuery(cmd);
+
+	mysql_query(&database.my_sql, "select count(*) from works where bought=1;");
+	auto result = mysql_store_result(&database.my_sql);
+	if (mysql_errno(&database.my_sql))
+		printf("%s\n", mysql_error(&database.my_sql));
+	int ret = 0;
+	MYSQL_ROW row;
+	if (row = mysql_fetch_row(result))
+		ret = atoi(row[0]);			
+	mysql_free_result(result);
+
+	printf("Update Bought List %d\n", ret);
+	return "Sucess";
+}
+
 std::string DBProxyServer::GetAllInvalidWork()
 {
 	std::set<std::string> invalid_work;
 	{
 		DataBase database;
-		mysql_query(&database.my_sql, "select id,eliminated,downloaded from works;");
+		mysql_query(&database.my_sql, "select id,eliminated,downloaded,bought from works;");
 		auto result = mysql_store_result(&database.my_sql);
 		if (mysql_errno(&database.my_sql))
 			printf("%s\n", mysql_error(&database.my_sql));
 		MYSQL_ROW row;
 		while (row = mysql_fetch_row(result))
-			if (atoi(row[1]) || atoi(row[2]))
+			if (atoi(row[1]) || atoi(row[2])||atoi(row[3]))
 				invalid_work.insert(row[0]);
 		mysql_free_result(result);
 	}
@@ -253,37 +279,52 @@ void DBProxyServer::SyncLocalFile()
 	QStringList local_files;
 	for (auto&dir : local_dirs)
 		local_files.append(QDir(dir).entryList({ "*" }, QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name));
-	int ct = 0;
 	std::string cmd;
-	QRegExp reg("[RVBJ]{1,2}[0-9]{3,6}");	
+	QRegExp reg(WORK_NAME_EXP);
 	DataBase database;
+	std::set<std::string> ct;
 	for (auto& dir : local_files)
 	{
 		int pos = reg.indexIn(dir);
 		if (pos > -1) {
 			std::string work_name = reg.cap(0).toLocal8Bit().toStdString();
-			cmd +="INSERT IGNORE INTO works VALUES(\""+work_name+"\",0,1);"
+			cmd +="INSERT IGNORE INTO works(id) VALUES(\""+work_name+"\");"
 				"UPDATE works SET downloaded = 1 WHERE id = \""+work_name+"\"; ";
-			ct++;
-			//printf("%s\n",work_name.c_str());
+			ct.insert(work_name);
 		}
-		if (cmd.length() > 10000)
-		{
-			mysql_query(&database.my_sql,cmd.c_str());
-			do mysql_free_result(mysql_store_result(&database.my_sql));
-			while (!mysql_next_result(&database.my_sql));
-			cmd = "";
-			if(mysql_errno(&database.my_sql))
-				printf("%s\n",mysql_error(&database.my_sql));
-		}
+		if (cmd.length() > SQL_LENGTH_LIMIT)
+			database.SendQuery(cmd);
+
 	}
 	if (cmd.length() > 0)
+		database.SendQuery(cmd);
+
+	mysql_query(&database.my_sql, "select count(*) from works where downloaded=1;");
+	auto result = mysql_store_result(&database.my_sql);
+	if (mysql_errno(&database.my_sql))
+		printf("%s\n", mysql_error(&database.my_sql));
+	int ret = 0;
+	MYSQL_ROW row;
+	if (row = mysql_fetch_row(result))
+		ret = atoi(row[0]);
+	mysql_free_result(result);
+
+	printf("Sync from local %d works->%d\n", ct.size(),ret);
+}
+
+void DBProxyServer::DownloadAll(const QByteArray&cookie)
+{
+	std::vector<std::string> works;
 	{
-		mysql_query(&database.my_sql, cmd.c_str());
-		do mysql_free_result(mysql_store_result(&database.my_sql));
-		while (!mysql_next_result(&database.my_sql));
+		DataBase database;
+		mysql_query(&database.my_sql, "select id from works where downloaded=0 and bought=1 and eliminated=0;");
+		auto result = mysql_store_result(&database.my_sql);
 		if (mysql_errno(&database.my_sql))
 			printf("%s\n", mysql_error(&database.my_sql));
+		MYSQL_ROW row;
+		while (row = mysql_fetch_row(result))
+			works.push_back(row[0]);
+		mysql_free_result(result);
 	}
-	printf("Sync from local %d works\n", ct);
+	client.start(cookie,works);
 }
