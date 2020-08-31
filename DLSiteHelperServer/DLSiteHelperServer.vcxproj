@@ -64,12 +64,12 @@
   </ItemDefinitionGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="QtSettings">
     <QtInstall>msvc2017_64</QtInstall>
-    <QtModules>core;network</QtModules>
+    <QtModules>core;network;widgets</QtModules>
     <QtBuildConfig>debug</QtBuildConfig>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="QtSettings">
     <QtInstall>msvc2017_64</QtInstall>
-    <QtModules>core;network</QtModules>
+    <QtModules>core;network;widgets</QtModules>
     <QtBuildConfig>release</QtBuildConfig>
   </PropertyGroup>
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.props')">
@@ -106,11 +106,17 @@
     <ClCompile Include="DBProxyServer.cpp" />
     <ClCompile Include="DLSiteClient.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="MyFakeWindow.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DataBase.h" />
+    <QtMoc Include="MyFakeWindow.h" />
+    <ClInclude Include="resource.h" />
     <QtMoc Include="DLSiteClient.h" />
     <QtMoc Include="DBProxyServer.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <QtRcc Include="Resource.qrc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">

@@ -32,9 +32,15 @@
     <ClCompile Include="DLSiteClient.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="MyFakeWindow.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DataBase.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="resource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -45,5 +51,13 @@
     <QtMoc Include="DLSiteClient.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <QtMoc Include="MyFakeWindow.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+  </ItemGroup>
+  <ItemGroup>
+    <QtRcc Include="Resource.qrc">
+      <Filter>Source Files</Filter>
+    </QtRcc>
   </ItemGroup>
 </Project>
