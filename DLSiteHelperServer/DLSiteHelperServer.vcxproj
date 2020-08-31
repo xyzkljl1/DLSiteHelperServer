@@ -110,6 +110,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DataBase.h" />
+    <ClInclude Include="resource1.h" />
     <QtMoc Include="MyFakeWindow.h" />
     <ClInclude Include="resource.h" />
     <QtMoc Include="DLSiteClient.h" />
@@ -117,6 +118,12 @@
   </ItemGroup>
   <ItemGroup>
     <QtRcc Include="Resource.qrc" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="DLSiteHelperServer.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="icon1.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">
