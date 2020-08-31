@@ -6,7 +6,14 @@
 #include <QNetworkCookieJar>
 #include <QVariant>
 #include <QList>
+#include <QDir>
 #include <QSet>
+#import "IDManTypeInfo.tlb" 
+#include "IDManTypeInfo.h"            
+#include "IDManTypeInfo_i.c"
+//#include <atlbase.h>    //for BSTR class
+#include <comutil.h>
+#include <atlthunk.h>
 Q_DECLARE_METATYPE(QList<QNetworkCookie>)
 DLSiteClient::DLSiteClient()
 {
@@ -32,19 +39,77 @@ void DLSiteClient::onStatusFinished()
 			ct_s++;
 	}
 	if (ct_f + ct_s == status.size())
-	{
-		printf("finished");
-		FILE* fp = fopen("E:\\ChromeExt\\DLSiteHelperServer\\tmp.txt", "w");
-		for (auto& s : status)
-		{
-			fprintf(fp,"%s %d ",s.first.c_str(),s.second.type);
-			for (auto&url : s.second.urls)
-				fprintf(fp, "%s ", url.c_str());
-			fprintf(fp,"\n");
-		}
-		fclose(fp);
-	}
+		SendTaskToIDM();
 }
+void DLSiteClient::SendTaskToIDM()
+{
+	ICIDMLinkTransmitter2* pIDM;
+	HRESULT hr = CoCreateInstance(CLSID_CIDMLinkTransmitter,
+		NULL,
+		CLSCTX_LOCAL_SERVER,
+		IID_ICIDMLinkTransmitter2,
+		(void**)&pIDM);
+	int ct = 0;
+	if (S_OK == hr)
+		for (const auto& task_pair : status)
+		{
+			bool success = true;
+			auto& task = task_pair.second;
+			if (!task.ready)
+				continue;
+			if (task.failed)
+				continue;
+			if (task.urls.empty())
+				continue;
+			std::string path=DOWNLOAD_DIR;
+			switch (task.type) {
+			case WorkType::AUDIO:path += "ASMR/"; break;
+			case WorkType::VIDEO:path += "Video/"; break;
+			case WorkType::PICTURE:path += "CG/"; break;
+			case WorkType::PROGRAM:path += "Game/"; break;
+			default:path += "Default";
+			}
+			if (task.download_ext.count("zip"))
+				path += "zip/";
+			else if (task.download_ext.count("rar"))
+				path += "rar/";
+			else
+				path += "other/";
+			if (!QDir(QString::fromLocal8Bit(path.c_str())).exists())
+				QDir().mkpath(QString::fromLocal8Bit(path.c_str()));
+			for (int i=0;i<task.urls.size();++i)
+			{
+				VARIANT var;
+				VariantInit(&var);
+				var.vt = VT_EMPTY;
+				_bstr_t url(task.urls[i].c_str());
+				_bstr_t fname(task.file_names[i].c_str());
+				_bstr_t referer("https://play.dlsite.com/#/library");
+				_bstr_t path_b(path.c_str());
+				_bstr_t cookies(this->cookies.toStdString().c_str());
+				_bstr_t data("");
+				_bstr_t user("");
+				_bstr_t pass("");
+				int flags = 0x01|0x02;//0x01:不确认，0x02:稍后下载
+
+				hr = pIDM->SendLinkToIDM2(url, referer, cookies, data, user, pass, path_b, fname, flags, var, var);
+
+				if (S_OK != hr)
+				{
+					puts("[-] SendLinkToIDM2 fail!");
+					success = false;
+				}
+			}
+			if (success)
+				ct++;
+		}
+	else
+		puts("[-] CoCreateInstance fail!");
+	pIDM->Release();
+	printf("%d in %d Task Created\n",ct,status.size());
+	this->running = false;
+}
+
 
 void DLSiteClient::onReceiveType(QNetworkReply* res,std::string id)
 {
@@ -132,15 +197,37 @@ void DLSiteClient::onReceiveDownloadTry(QNetworkReply* res, std::string id,int i
 		if (type.contains("application/zip")||type.contains("binary/octet-stream")||type.contains("application/octet-stream")|| type.contains("application/octet-stream")||type.contains("application/x-msdownload")
 			||type.contains("application/x-rar-compressed"))
 		{
+			QString url = res->url().toString();
+			std::string ext;
+			QString file_name;
+			QRegExp reg("filename=\"(.*)\"");
+			auto header_disposition = res->rawHeader("Content-Disposition");
+			//从文件头中尝试找文件名
+			if (reg.indexIn(header_disposition) >= 0)
+				file_name = reg.cap(1);
+			else//从网址中找
+			{
+				QRegExp reg("file/(.*)/");
+				if (reg.indexIn(url))
+					file_name = reg.cap(1);
+			}
+			int pos = file_name.lastIndexOf('.');
+			if (pos >= 0)
+				ext = file_name.right(file_name.length() - pos - 1).toStdString();
+
+			status[id].file_names.push_back(file_name.toLocal8Bit().toStdString());
+			//这里是重定向的所以要用res的url
+			status[id].urls.push_back(url.toLocal8Bit().toStdString());
+			if (!ext.empty())
+				status[id].download_ext.insert(ext);
 			if (idx==0)//单段下载
 			{
-				status[id].urls.push_back("https://www.dlsite.com/maniax/download/=/product_id/" + id + ".html");
+				
 				status[id].ready = true;
 				emit statusFinished();
 			}
 			else//分段下载其中的一段
 			{
-				status[id].urls.push_back("https://www.dlsite.com/maniax/download/=/number/"+std::to_string(idx)+"/product_id/"+id+".html");
 				QNetworkRequest request(QUrl(std::string("https://www.dlsite.com/maniax/download/=/number/"+std::to_string(idx+1)+"/product_id/" + id + ".html").c_str()));
 				request.setRawHeader("cookie", cookies);
 				request.setRawHeader("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.135 Safari/537.36");
@@ -190,7 +277,7 @@ void DLSiteClient::onReceiveDownloadTry(QNetworkReply* res, std::string id,int i
 }
 
 
-void DLSiteClient::start(const QByteArray& _cookies, const std::vector<std::string>& works)
+void DLSiteClient::StartDownload(const QByteArray& _cookies, const std::vector<std::string>& works)
 {
 	if (this->running)
 		return;
@@ -200,6 +287,8 @@ void DLSiteClient::start(const QByteArray& _cookies, const std::vector<std::stri
 	status.clear();
 	for (const auto& id : works)
 	{
+		//url的第一级根据卖场分为manix、pro、books，但是实际可以随便用
+		//产品页面的第二级根据是否发售分为work、announce,下载的都是work
 		//获取类型
 		{
 			//https://play.dlsite.com/api/dlsite/download?workno=RJ296230
@@ -210,6 +299,7 @@ void DLSiteClient::start(const QByteArray& _cookies, const std::vector<std::stri
 			auto reply=manager.get(request);
 			connect(reply, &QNetworkReply::finished, this, std::bind(&DLSiteClient::onReceiveType,this,reply,id));
 		}
+		//获取下载地址
 		{
 			QNetworkRequest request(QUrl(std::string("https://www.dlsite.com/maniax/download/=/product_id/"+id+".html").c_str()));
 			request.setRawHeader("cookie", cookies);

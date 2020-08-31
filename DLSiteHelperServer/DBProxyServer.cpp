@@ -96,14 +96,14 @@ void DBProxyServer::onReceived(QTcpSocket * conn)
 		else if (request_target == "/?Download")
 		{
 			DownloadAll(data);
-			sendStandardResponse(conn, "123");
+			sendStandardResponse(conn, "Started");
 			printf("Response Download Request\n");
 		}
 		else if (request_target == "/?UpdateBoughtItems")
 		{
 			std::string ret = UpdateBoughtItems(data);
 			sendStandardResponse(conn,ret);
-			printf("Response Download Request\n");
+			printf("Update Bought Items\n");
 		}
 		else if (reg_mark_eliminated.indexIn(tmp)>0)
 		{
@@ -326,5 +326,5 @@ void DBProxyServer::DownloadAll(const QByteArray&cookie)
 			works.push_back(row[0]);
 		mysql_free_result(result);
 	}
-	client.start(cookie,works);
+	client.StartDownload(cookie,works);
 }
