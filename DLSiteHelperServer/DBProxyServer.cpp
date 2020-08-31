@@ -22,7 +22,10 @@ DBProxyServer::DBProxyServer()
 {
 	connect(this, &DBProxyServer::newConnection, this, &DBProxyServer::onConnected);
 	if (!listen(QHostAddress::LocalHost, 4567))
+	{
 		printf("Cant listen\n");
+		exit(-1);
+	}
 	SyncLocalFile();
 }
 
