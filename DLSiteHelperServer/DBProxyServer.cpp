@@ -82,6 +82,7 @@ void DBProxyServer::onReceived(QTcpSocket * conn)
 	if (reader.code() == boost::http::token::code::error_insufficient_data)
 	{
 		QRegExp reg_mark_eliminated("(/\?markEliminated)(" WORK_NAME_EXP ")");
+		QRegExp reg_mark_special_eliminated("(/\?markSpecialEliminated)(" WORK_NAME_EXP ")");
 		QRegExp reg_mark_overlap("(/\?markOverlap)&main=(" WORK_NAME_EXP ")&sub=(" WORK_NAME_EXP ")&duplex=([0-9])");
 		QString tmp = QString::fromLocal8Bit(request_target.c_str());
 		if (request_target == "/?QueryInvalidDLSite")
@@ -126,6 +127,27 @@ void DBProxyServer::onReceived(QTcpSocket * conn)
 				{
 					sendStandardResponse(conn, "Sucess");
 					printf("Mark %s Eliminated\n", id.c_str());
+				}
+			}
+		}
+		else if (reg_mark_special_eliminated.indexIn(tmp) > 0)
+		{
+			if (!reg_mark_special_eliminated.cap(2).isEmpty())
+			{
+				std::string id = reg_mark_special_eliminated.cap(2).toLocal8Bit().toStdString();
+				DataBase database;
+				std::string  cmd = "INSERT IGNORE INTO works(id) VALUES(\"" + id + "\");"
+					"UPDATE works SET specialEliminated = 1 WHERE id = \"" + id + "\"; ";
+				mysql_query(&database.my_sql, cmd.c_str());
+				if (mysql_errno(&database.my_sql))
+				{
+					printf("%s\n", mysql_error(&database.my_sql));
+					sendFailResponse(conn, "SQL Fail");
+				}
+				else
+				{
+					sendStandardResponse(conn, "Sucess");
+					printf("Mark %s Special Eliminated\n", id.c_str());
 				}
 			}
 		}
@@ -246,19 +268,20 @@ std::string DBProxyServer::UpdateBoughtItems(const QByteArray & data)
 std::string DBProxyServer::GetAllInvalidWork()
 {
 	std::set<std::string> invalid_work;
+	//已下载/标记/购买的作品是invalid
+	//SpecialEliminate的作品不会令覆盖的作品变为invalid所以要放在后面加入
 	{
 		DataBase database;
-		mysql_query(&database.my_sql, "select id,eliminated,downloaded,bought from works;");
+		mysql_query(&database.my_sql, "select id from works where eliminated=1 or downloaded=1 or bought=1;");
 		auto result = mysql_store_result(&database.my_sql);
 		if (mysql_errno(&database.my_sql))
 			printf("%s\n", mysql_error(&database.my_sql));
 		MYSQL_ROW row;
 		while (row = mysql_fetch_row(result))
-			if (atoi(row[1]) || atoi(row[2])||atoi(row[3]))
-				invalid_work.insert(row[0]);
+			invalid_work.insert(row[0]);
 		mysql_free_result(result);
 	}
-	{
+	{//被invalid的作品覆盖的作品也是invalid
 		DataBase database;
 		mysql_query(&database.my_sql, "select Main,Sub from overlap;");
 		auto result = mysql_store_result(&database.my_sql);
@@ -269,6 +292,20 @@ std::string DBProxyServer::GetAllInvalidWork()
 		while (row = mysql_fetch_row(result))
 			if(invalid_work.count(std::string(row[0])))
 				invalid_work.insert(row[1]);
+		mysql_free_result(result);
+	}
+	//覆盖的作品全部invalid的作品未必是invalid，因为可能有额外的内容
+	//被非invalid覆盖的作品也是非invalid，因为可能有合并和分开购买的不同需求
+	//最后加入specialEliminated
+	{
+		DataBase database;
+		mysql_query(&database.my_sql, "select id from works where specialEliminated=1;");
+		auto result = mysql_store_result(&database.my_sql);
+		if (mysql_errno(&database.my_sql))
+			printf("%s\n", mysql_error(&database.my_sql));
+		MYSQL_ROW row;
+		while (row = mysql_fetch_row(result))
+			invalid_work.insert(row[0]);
 		mysql_free_result(result);
 	}
 	std::string ret;
