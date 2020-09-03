@@ -85,25 +85,25 @@ void DBProxyServer::onReceived(QTcpSocket * conn)
 		QRegExp reg_mark_special_eliminated("(/\?markSpecialEliminated)(" WORK_NAME_EXP ")");
 		QRegExp reg_mark_overlap("(/\?markOverlap)&main=(" WORK_NAME_EXP ")&sub=(" WORK_NAME_EXP ")&duplex=([0-9])");
 		QString tmp = QString::fromLocal8Bit(request_target.c_str());
-		if (request_target == "/?QueryInvalidDLSite")
+		if (request_target.find("/?QueryInvalidDLSite")==0)
 		{
 			std::string ret = GetAllInvalidWork();
 			sendStandardResponse(conn, ret);
 			printf("Response Query Request\n");
 		}
-		else if (request_target == "/?QueryOverlapDLSite")
+		else if (request_target.find("/?QueryOverlapDLSite")==0)
 		{
 			std::string ret = GetAllOverlapWork();
 			sendStandardResponse(conn, ret);
 			printf("Response Query Request\n");
 		}
-		else if (request_target == "/?Download")
+		else if (request_target.find("/?Download")==0)
 		{
 			DownloadAll(data);
 			sendStandardResponse(conn, "Started");
 			printf("Response Download Request\n");
 		}
-		else if (request_target == "/?UpdateBoughtItems")
+		else if (request_target.find("/?UpdateBoughtItems")==0)
 		{
 			std::string ret = UpdateBoughtItems(data);
 			sendStandardResponse(conn,ret);

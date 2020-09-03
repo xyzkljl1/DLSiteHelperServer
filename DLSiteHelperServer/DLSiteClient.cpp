@@ -173,6 +173,8 @@ void DLSiteClient::onReceiveType(QNetworkReply* res,std::string id)
 				status[id].type = WorkType::PICTURE;
 			else if (types.contains("WPD")||types.contains("PDF"))//文件形式:PDF同捆、PDF，无法确定类型
 				status[id].type = WorkType::OTHER;
+			else if (types.contains("AVI") )//文件形式:AVI，无法确定类型
+				status[id].type = WorkType::OTHER;
 			else if (types.contains("ET3") )//作品类型:其它,无法确定类型
 				status[id].type = WorkType::OTHER;
 			else

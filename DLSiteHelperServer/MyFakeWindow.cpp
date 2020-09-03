@@ -1,5 +1,7 @@
 #include "MyFakeWindow.h"
 #include <Windows.h>
+#include <QMenu>
+#include <QAction>
 MyFakeWindow::MyFakeWindow(QObject *parent)
 	: QObject(parent)
 {
@@ -8,6 +10,11 @@ MyFakeWindow::MyFakeWindow(QObject *parent)
 	icon->setToolTip("DLSiteHelper");
 	icon->show();
 	connect(icon, &QSystemTrayIcon::activated, this, &MyFakeWindow::onIconClicked);
+	QMenu *menu=new QMenu();
+	QAction *exit_action=new QAction(QString::fromLocal8Bit("ÍË³ö"),menu);
+	menu->addAction(exit_action);
+	icon->setContextMenu(menu);
+	connect(exit_action, &QAction::triggered, this, &MyFakeWindow::signalClose);
 }
 
 MyFakeWindow::~MyFakeWindow()
@@ -19,7 +26,7 @@ void MyFakeWindow::onIconClicked(QSystemTrayIcon::ActivationReason reason)
 	if (reason == QSystemTrayIcon::ActivationReason::DoubleClick)
 	{
 		HWND hw = GetConsoleWindow();
-		ShowWindow(hw, visible);
+		ShowWindow(hw, visible? SW_SHOW: SW_HIDE);
 		visible = !visible;
 	}
 }
