@@ -14,7 +14,6 @@
 #include <comutil.h>
 #include <atlthunk.h>
 #include "DBProxyServer.h"
-Q_DECLARE_METATYPE(QList<QNetworkCookie>)
 DLSiteClient::DLSiteClient()
 {
 	QNetworkProxy proxy(QNetworkProxy::ProxyType::HttpProxy, "127.0.0.1", 8000);
@@ -24,7 +23,6 @@ DLSiteClient::DLSiteClient()
 	connect(this, &DLSiteClient::downloadStatusFinished, this, &DLSiteClient::onDownloadStatusFinished);
 	connect(this, &DLSiteClient::renameStatusFinished, this, &DLSiteClient::onRenameStatusFinished);
 }
-
 
 DLSiteClient::~DLSiteClient()
 {
@@ -225,15 +223,14 @@ void DLSiteClient::onReceiveType(QNetworkReply* res,std::string id)
 
 QString DLSiteClient::unicodeToString(const QString& str)
 {
-	QString result;
-	int index = str.indexOf("\\u");
+	QString result=str;
+	int index = result.indexOf("\\u");
 	while (index != -1)
 	{
-		QString s1 = str.mid(index + 2, 4);
-		result.append(s1.toUShort(0, 16));
-		index = str.indexOf("\\u", index + 5);
+		result.replace(result.mid(index, 6),QString(result.mid(index + 2, 4).toUShort(0, 16)).toUtf8());
+		index = result.indexOf("\\u");
 	}
-	return result.toUtf8();
+	return result;
 }
 
 void DLSiteClient::onReceiveProductInfo(QNetworkReply *res, std::string id)
@@ -254,7 +251,7 @@ void DLSiteClient::onReceiveProductInfo(QNetworkReply *res, std::string id)
 			QString ret;
 			if (reg.indexIn(doc) >= 0)
 				ret = unicodeToString(reg.cap(1));
-			ret.replace(QRegExp("[/\\?*<>:\"|.]"),"_");//替换不能/不想出现在文件名中的字符
+			ret.replace(QRegExp("[/\\\\?*<>:\"|.]"),"_");//替换不能/不想出现在文件名中的字符
 			status[id].work_name = ret;
 		}
 	}
@@ -390,9 +387,16 @@ void DLSiteClient::StartRename(const QStringList& _files)
 		return;
 	//因为都是在主线程运行，所以这里不需要用原子操作
 	running = true;
-	this->local_files = _files;
 	status.clear();
+	local_files.clear();
 	auto reg = DBProxyServer::GetWorkNameExp();
+	for (const auto& file : _files)
+	{
+		reg.indexIn(file);
+		std::string id = reg.cap(0).toLocal8Bit();
+		if(QDir(file).dirName().size()<id.size()+2)//愿来已经有名字的不需要重命名
+			this->local_files.push_back(file);
+	}
 	for (const auto& file : local_files)
 	{
 		reg.indexIn(file);
