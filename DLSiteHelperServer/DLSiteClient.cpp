@@ -412,4 +412,6 @@ void DLSiteClient::StartRename(const QStringList& _files)
 			connect(reply, &QNetworkReply::finished, this, std::bind(&DLSiteClient::onReceiveProductInfo, this, reply, id));
 		}
 	}
+	//为了让没有文件需要重命名时也有响应
+	emit renameStatusFinished();
 }
