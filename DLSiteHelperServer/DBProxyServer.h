@@ -8,6 +8,7 @@ class DBProxyServer:public QTcpServer
 public:
 	DBProxyServer();
 	~DBProxyServer();
+	static QRegExp GetWorkNameExp();
 protected:
 	void onConnected();
 	void onReceived(QTcpSocket* conn);
@@ -22,8 +23,17 @@ protected:
 	void SyncLocalFile();
 
 	void DownloadAll(const QByteArray& cookie);
+	void RenameLocal();
 protected:
-	QStringList local_dirs = {QString::fromLocal8Bit("D:/ASMR_archive/"),QString::fromLocal8Bit("D:/video/pic/") };
+	QStringList local_dirs = {
+		QString::fromLocal8Bit("D:/ASMR_archive/"),
+		QString::fromLocal8Bit("D:/ASMR_cant_archive/"),
+		QString::fromLocal8Bit("D:/ASMR_c/"),
+		QString::fromLocal8Bit("D:/video/pic/"),
+		QString::fromLocal8Bit("D:/video/anime/"),
+		QString::fromLocal8Bit("D:/video/exe/"),
+		QString::fromLocal8Bit("D:/IDMDownload/avater/")
+		 };
 	DLSiteClient client;
 };
 

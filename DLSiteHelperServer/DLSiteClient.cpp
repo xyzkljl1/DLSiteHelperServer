@@ -2,10 +2,9 @@
 #include <QNetworkAccessManager>
 #include <QNetworkProxy>
 #include <QNetworkReply>
-#include <QNetworkCookie>
-#include <QNetworkCookieJar>
 #include <QVariant>
 #include <QList>
+#include <QTextCodec>
 #include <QDir>
 #include <QSet>
 #import "IDManTypeInfo.tlb" 
@@ -14,13 +13,16 @@
 //#include <atlbase.h>    //for BSTR class
 #include <comutil.h>
 #include <atlthunk.h>
+#include "DBProxyServer.h"
 Q_DECLARE_METATYPE(QList<QNetworkCookie>)
 DLSiteClient::DLSiteClient()
 {
 	QNetworkProxy proxy(QNetworkProxy::ProxyType::HttpProxy, "127.0.0.1", 8000);
 	manager.setNetworkAccessible(QNetworkAccessManager::Accessible);
 	manager.setProxy(proxy);
-	connect(this, &DLSiteClient::statusFinished, this, &DLSiteClient::onStatusFinished);
+	//其实这里用信号没什么意义，完全可以直接调用槽
+	connect(this, &DLSiteClient::downloadStatusFinished, this, &DLSiteClient::onDownloadStatusFinished);
+	connect(this, &DLSiteClient::renameStatusFinished, this, &DLSiteClient::onRenameStatusFinished);
 }
 
 
@@ -28,7 +30,38 @@ DLSiteClient::~DLSiteClient()
 {
 }
 
-void DLSiteClient::onStatusFinished()
+void DLSiteClient::onRenameStatusFinished()
+{
+	for (auto& s : status)
+		if (s.second.work_name.isEmpty())
+			return;
+	auto reg = DBProxyServer::GetWorkNameExp();
+	int ct = 0;
+	for (const auto& file : local_files)
+	{
+		reg.indexIn(file);
+		std::string id = reg.cap(0).toLocal8Bit();
+		int pos = file.lastIndexOf(QRegExp("[\\/]")) + 1;
+		QString old_name = QDir(file).dirName();
+		QString new_name = QString::fromLocal8Bit(id.c_str())+" "+status[id].work_name;
+		if (old_name == new_name)
+			continue;
+		QDir parent(file);
+		parent.cdUp();
+		while (parent.exists(new_name))
+			new_name=new_name+"_repeat";
+		if (old_name == new_name)
+			continue;
+		if (!parent.rename(old_name, new_name))
+			qDebug() << "Cant Rename " << old_name << "->" << new_name;
+		else
+			ct ++;
+	}
+	status.clear();
+	running = false;
+	printf("Rename %d of %d\n", ct, local_files.size());
+}
+void DLSiteClient::onDownloadStatusFinished()
 {
 	int ct_f = 0,ct_s=0;
 	for (auto& s : status)
@@ -108,8 +141,8 @@ void DLSiteClient::SendTaskToIDM()
 	pIDM->Release();
 	printf("%d in %d Task Created\n",ct,status.size());
 	this->running = false;
+	status.clear();
 }
-
 
 void DLSiteClient::onReceiveType(QNetworkReply* res,std::string id)
 {
@@ -171,7 +204,7 @@ void DLSiteClient::onReceiveType(QNetworkReply* res,std::string id)
 				status[id].type = WorkType::VIDEO;
 			else if (types.contains("MNG") || types.contains("ICG"))//作品类型:漫画、CG
 				status[id].type = WorkType::PICTURE;
-			else if (types.contains("WPD")||types.contains("PDF"))//文件形式:PDF同捆、PDF，无法确定类型
+			else if (types.contains("WPD")||types.contains("PDF")||types.contains("icon_HTF"))//文件形式:PDF同捆、PDF、HTML(flash)，无法确定类型
 				status[id].type = WorkType::OTHER;
 			else if (types.contains("AVI") )//文件形式:AVI，无法确定类型
 				status[id].type = WorkType::OTHER;
@@ -188,6 +221,45 @@ void DLSiteClient::onReceiveType(QNetworkReply* res,std::string id)
 			status[id].type = WorkType::OTHER;
 	}
 	res->deleteLater();
+}
+
+QString DLSiteClient::unicodeToString(const QString& str)
+{
+	QString result;
+	int index = str.indexOf("\\u");
+	while (index != -1)
+	{
+		QString s1 = str.mid(index + 2, 4);
+		result.append(s1.toUShort(0, 16));
+		index = str.indexOf("\\u", index + 5);
+	}
+	return result.toUtf8();
+}
+
+void DLSiteClient::onReceiveProductInfo(QNetworkReply *res, std::string id)
+{
+	status[id].work_name = "_";
+	if (res->error())
+	{
+		qDebug() << res->error();
+		qDebug() << res->errorString();
+	}
+	else
+	{
+		QByteArray doc = res->readAll();
+		int code = res->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+		if (code == 200)
+		{
+			QRegExp reg("\"work_name\"[:\" ]*([^\"]*)\",");
+			QString ret;
+			if (reg.indexIn(doc) >= 0)
+				ret = unicodeToString(reg.cap(1));
+			ret.replace(QRegExp("[/\\?*<>:\"|.]"),"_");//替换不能/不想出现在文件名中的字符
+			status[id].work_name = ret;
+		}
+	}
+	res->deleteLater();
+	emit onRenameStatusFinished();
 }
 
 void DLSiteClient::onReceiveDownloadTry(QNetworkReply* res, std::string id,int idx)
@@ -223,10 +295,9 @@ void DLSiteClient::onReceiveDownloadTry(QNetworkReply* res, std::string id,int i
 			if (!ext.empty())
 				status[id].download_ext.insert(ext);
 			if (idx==0)//单段下载
-			{
-				
+			{				
 				status[id].ready = true;
-				emit statusFinished();
+				emit downloadStatusFinished();
 			}
 			else//分段下载其中的一段
 			{
@@ -252,14 +323,14 @@ void DLSiteClient::onReceiveDownloadTry(QNetworkReply* res, std::string id,int i
 			else
 			{
 				status[id].failed = true;
-				emit statusFinished();
+				emit downloadStatusFinished();
 				printf("Receive %s Error:", id.c_str());
 			}
 		}
 		else
 		{
 			status[id].failed = true;
-			emit statusFinished();
+			emit downloadStatusFinished();
 			printf("Receive %s Error:", id.c_str());
 			qDebug() << type;
 		}
@@ -267,17 +338,16 @@ void DLSiteClient::onReceiveDownloadTry(QNetworkReply* res, std::string id,int i
 	else if (code == 404 && idx>1)//分段下载终了
 	{
 		status[id].ready = true;
-		emit statusFinished();
+		emit downloadStatusFinished();
 	}
 	else
 	{
 		status[id].failed = true;
-		emit statusFinished();
+		emit downloadStatusFinished();
 		printf("Receive %s Error:", id.c_str());
 	}
 	res->deleteLater();
 }
-
 
 void DLSiteClient::StartDownload(const QByteArray& _cookies, const std::vector<std::string>& works)
 {
@@ -289,6 +359,7 @@ void DLSiteClient::StartDownload(const QByteArray& _cookies, const std::vector<s
 	status.clear();
 	for (const auto& id : works)
 	{
+		status[id];
 		//url的第一级根据卖场分为manix、pro、books，但是实际可以随便用
 		//产品页面的第二级根据是否发售分为work、announce,下载的都是work
 		//获取类型
@@ -310,6 +381,30 @@ void DLSiteClient::StartDownload(const QByteArray& _cookies, const std::vector<s
 			auto reply = manager.head(request);
 			connect(reply, &QNetworkReply::finished, this, std::bind(&DLSiteClient::onReceiveDownloadTry, this, reply, id,0));
 		}
+	}
+}
+
+void DLSiteClient::StartRename(const QStringList& _files)
+{
+	if (this->running)
+		return;
+	//因为都是在主线程运行，所以这里不需要用原子操作
+	running = true;
+	this->local_files = _files;
+	status.clear();
+	auto reg = DBProxyServer::GetWorkNameExp();
+	for (const auto& file : local_files)
+	{
+		reg.indexIn(file);
+		std::string id=reg.cap(0).toLocal8Bit();
 		status[id];
+		{
+			QNetworkRequest request(QUrl(std::string("https://www.dlsite.com/maniax/product/info/ajax?product_id=" + id + "&cdn_cache_min=0").c_str()));
+			//request.setRawHeader("cookie", cookies);
+			request.setRawHeader("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.135 Safari/537.36");
+			request.setAttribute(QNetworkRequest::FollowRedirectsAttribute, true);
+			auto reply = manager.get(request);
+			connect(reply, &QNetworkReply::finished, this, std::bind(&DLSiteClient::onReceiveProductInfo, this, reply, id));
+		}
 	}
 }

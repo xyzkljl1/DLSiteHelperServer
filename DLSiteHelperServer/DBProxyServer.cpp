@@ -16,7 +16,7 @@
 #include "DataBase.h"
 
 const int SQL_LENGTH_LIMIT = 10000;
-#define WORK_NAME_EXP "[RVBJ]{1,2}[0-9]{3,6}"
+#define WORK_NAME_EXP "[RVBJ]{2}[0-9]{3,6}"
 
 DBProxyServer::DBProxyServer()
 {
@@ -31,6 +31,11 @@ DBProxyServer::DBProxyServer()
 
 DBProxyServer::~DBProxyServer()
 {
+}
+
+QRegExp DBProxyServer::GetWorkNameExp()
+{
+	return QRegExp(WORK_NAME_EXP);
 }
 
 void DBProxyServer::onConnected()
@@ -102,6 +107,11 @@ void DBProxyServer::onReceived(QTcpSocket * conn)
 			DownloadAll(data);
 			sendStandardResponse(conn, "Started");
 			printf("Response Download Request\n");
+		}
+		else if (request_target.find("/?RenameLocal") == 0) {
+			RenameLocal();
+			sendStandardResponse(conn, "Started");
+			printf("Response Rename Request\n");
 		}
 		else if (request_target.find("/?UpdateBoughtItems")==0)
 		{
@@ -367,4 +377,23 @@ void DBProxyServer::DownloadAll(const QByteArray&cookie)
 		mysql_free_result(result);
 	}
 	client.StartDownload(cookie,works);
+}
+
+
+void DBProxyServer::RenameLocal()
+{
+	QStringList ret;
+	QStringList local_files;
+	for (auto&dir : local_dirs)
+		for(auto& info: QDir(dir).entryInfoList({ "*" }, QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name))
+		local_files.append(info.filePath());
+	QRegExp reg(WORK_NAME_EXP);
+	std::set<std::string> ct;
+	for (auto& dir : local_files)
+	{
+		int pos = reg.indexIn(dir);
+		if (pos > -1)
+			ret.push_back(dir);
+	}
+	client.StartRename(ret);
 }
