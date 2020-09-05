@@ -20,15 +20,15 @@ DLSiteClient::DLSiteClient()
 	manager.setNetworkAccessible(QNetworkAccessManager::Accessible);
 	manager.setProxy(proxy);
 	//其实这里用信号没什么意义，完全可以直接调用槽
-	connect(this, &DLSiteClient::downloadStatusFinished, this, &DLSiteClient::onDownloadStatusFinished);
-	connect(this, &DLSiteClient::renameStatusFinished, this, &DLSiteClient::onRenameStatusFinished);
+	connect(this, &DLSiteClient::downloadStatusChanged, this, &DLSiteClient::onDownloadStatusChanged);
+	connect(this, &DLSiteClient::renameStatusChanged, this, &DLSiteClient::onRenameStatusChanged);
 }
 
 DLSiteClient::~DLSiteClient()
 {
 }
 
-void DLSiteClient::onRenameStatusFinished()
+void DLSiteClient::onRenameStatusChanged()
 {
 	for (auto& s : status)
 		if (s.second.work_name.isEmpty())
@@ -38,10 +38,10 @@ void DLSiteClient::onRenameStatusFinished()
 	for (const auto& file : local_files)
 	{
 		reg.indexIn(file);
-		std::string id = reg.cap(0).toLocal8Bit();
+		QString id = reg.cap(0);
 		int pos = file.lastIndexOf(QRegExp("[\\/]")) + 1;
 		QString old_name = QDir(file).dirName();
-		QString new_name = QString::fromLocal8Bit(id.c_str())+" "+status[id].work_name;
+		QString new_name = id+" "+status[id].work_name;
 		if (old_name == new_name)
 			continue;
 		QDir parent(file);
@@ -59,7 +59,7 @@ void DLSiteClient::onRenameStatusFinished()
 	running = false;
 	printf("Rename %d of %d\n", ct, local_files.size());
 }
-void DLSiteClient::onDownloadStatusFinished()
+void DLSiteClient::onDownloadStatusChanged()
 {
 	int ct_f = 0,ct_s=0;
 	for (auto& s : status)
@@ -138,12 +138,12 @@ void DLSiteClient::SendTaskToIDM()
 	else
 		puts("[-] CoCreateInstance fail!");
 	pIDM->Release();
-	printf("%d in %d Task Created\n",ct,status.size());
+	printf("%d in %zd Task Created\n",ct,status.size());
 	this->running = false;
 	status.clear();
 }
 
-void DLSiteClient::onReceiveType(QNetworkReply* res,std::string id)
+void DLSiteClient::onReceiveType(QNetworkReply* res, QString id)
 {
 	if (res->error())
 	{
@@ -212,8 +212,7 @@ void DLSiteClient::onReceiveType(QNetworkReply* res,std::string id)
 			else
 			{
 				status[id].type = WorkType::OTHER;
-				printf("%s Cant identify type:",id.c_str());
-				qDebug() << types;;
+				qDebug() << id<< " Cant identify type:"<< types;
 			}
 		}
 		else
@@ -234,7 +233,7 @@ QString DLSiteClient::unicodeToString(const QString& str)
 	return result;
 }
 
-void DLSiteClient::onReceiveProductInfo(QNetworkReply *res, std::string id)
+void DLSiteClient::onReceiveProductInfo(QNetworkReply *res, QString id)
 {
 	status[id].work_name = "_";
 	if (res->error())
@@ -257,10 +256,10 @@ void DLSiteClient::onReceiveProductInfo(QNetworkReply *res, std::string id)
 		}
 	}
 	res->deleteLater();
-	emit onRenameStatusFinished();
+	emit onRenameStatusChanged();
 }
 
-void DLSiteClient::onReceiveDownloadTry(QNetworkReply* res, std::string id,int idx)
+void DLSiteClient::onReceiveDownloadTry(QNetworkReply* res,QString id,int idx)
 {	
 	int code = res->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
 	if (code == 200)
@@ -295,11 +294,11 @@ void DLSiteClient::onReceiveDownloadTry(QNetworkReply* res, std::string id,int i
 			if (idx==0)//单段下载
 			{				
 				status[id].ready = true;
-				emit downloadStatusFinished();
+				emit downloadStatusChanged();
 			}
 			else//分段下载其中的一段
 			{
-				QNetworkRequest request(QUrl(std::string("https://www.dlsite.com/maniax/download/=/number/"+std::to_string(idx+1)+"/product_id/" + id + ".html").c_str()));
+				QNetworkRequest request(QUrl(QString("https://www.dlsite.com/maniax/download/=/number/%1/product_id/%2.html").arg(idx+1).arg(id)));
 				request.setRawHeader("cookie", cookies);
 				request.setRawHeader("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.135 Safari/537.36");
 				request.setAttribute(QNetworkRequest::FollowRedirectsAttribute, true);
@@ -311,7 +310,7 @@ void DLSiteClient::onReceiveDownloadTry(QNetworkReply* res, std::string id,int i
 		{
 			if (idx==0)//无法单段下载，开始分段尝试
 			{
-				QNetworkRequest request(QUrl(std::string("https://www.dlsite.com/maniax/download/=/number/1/product_id/"+id+".html").c_str()));
+				QNetworkRequest request(QUrl(QString("https://www.dlsite.com/maniax/download/=/number/1/product_id/%1.html").arg(id)));
 				request.setRawHeader("cookie", cookies);
 				request.setRawHeader("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.135 Safari/537.36");
 				request.setAttribute(QNetworkRequest::FollowRedirectsAttribute, true);
@@ -321,33 +320,32 @@ void DLSiteClient::onReceiveDownloadTry(QNetworkReply* res, std::string id,int i
 			else
 			{
 				status[id].failed = true;
-				emit downloadStatusFinished();
-				printf("Receive %s Error:", id.c_str());
+				emit downloadStatusChanged();
+				qDebug() << "Receive "<<id<<" Error:";
 			}
 		}
 		else
 		{
 			status[id].failed = true;
-			emit downloadStatusFinished();
-			printf("Receive %s Error:", id.c_str());
-			qDebug() << type;
+			emit downloadStatusChanged();
+			qDebug() << "Receive "<< id<<" Error:"<<type;
 		}
 	}
 	else if (code == 404 && idx>1)//分段下载终了
 	{
 		status[id].ready = true;
-		emit downloadStatusFinished();
+		emit downloadStatusChanged();
 	}
 	else
 	{
 		status[id].failed = true;
-		emit downloadStatusFinished();
-		printf("Receive %s Error:", id.c_str());
+		emit downloadStatusChanged();
+		qDebug() << "Receive " << id << " Error";
 	}
 	res->deleteLater();
 }
 
-void DLSiteClient::StartDownload(const QByteArray& _cookies, const std::vector<std::string>& works)
+void DLSiteClient::StartDownload(const QByteArray& _cookies, const QStringList& works)
 {
 	if (this->running)
 		return;
@@ -363,7 +361,7 @@ void DLSiteClient::StartDownload(const QByteArray& _cookies, const std::vector<s
 		//获取类型
 		{
 			//https://play.dlsite.com/api/dlsite/download?workno=RJ296230
-			QNetworkRequest request(QUrl(std::string("https://www.dlsite.com/maniax/work/=/product_id/"+id+".html").c_str()));
+			QNetworkRequest request(QUrl(QString("https://www.dlsite.com/maniax/work/=/product_id/%1.html").arg(id)));
 			request.setRawHeader("cookie", cookies);
 			request.setRawHeader("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.135 Safari/537.36");
 			request.setAttribute(QNetworkRequest::FollowRedirectsAttribute, true);
@@ -372,7 +370,7 @@ void DLSiteClient::StartDownload(const QByteArray& _cookies, const std::vector<s
 		}
 		//获取下载地址
 		{
-			QNetworkRequest request(QUrl(std::string("https://www.dlsite.com/maniax/download/=/product_id/"+id+".html").c_str()));
+			QNetworkRequest request(QUrl(QString("https://www.dlsite.com/maniax/download/=/product_id/%1.html").arg(id)));
 			request.setRawHeader("cookie", cookies);
 			request.setRawHeader("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.135 Safari/537.36");
 			request.setAttribute(QNetworkRequest::FollowRedirectsAttribute, true);
@@ -380,6 +378,7 @@ void DLSiteClient::StartDownload(const QByteArray& _cookies, const std::vector<s
 			connect(reply, &QNetworkReply::finished, this, std::bind(&DLSiteClient::onReceiveDownloadTry, this, reply, id,0));
 		}
 	}
+	emit downloadStatusChanged();
 }
 
 void DLSiteClient::StartRename(const QStringList& _files)
@@ -394,17 +393,17 @@ void DLSiteClient::StartRename(const QStringList& _files)
 	for (const auto& file : _files)
 	{
 		reg.indexIn(file);
-		std::string id = reg.cap(0).toLocal8Bit();
+		QString id = reg.cap(0);
 		if(QDir(file).dirName().size()<id.size()+2)//愿来已经有名字的不需要重命名
 			this->local_files.push_back(file);
 	}
 	for (const auto& file : local_files)
 	{
 		reg.indexIn(file);
-		std::string id=reg.cap(0).toLocal8Bit();
+		QString id=reg.cap(0);
 		status[id];
 		{
-			QNetworkRequest request(QUrl(std::string("https://www.dlsite.com/maniax/product/info/ajax?product_id=" + id + "&cdn_cache_min=0").c_str()));
+			QNetworkRequest request(QUrl(QString("https://www.dlsite.com/maniax/product/info/ajax?product_id=%1&cdn_cache_min=0").arg(id)));
 			//request.setRawHeader("cookie", cookies);
 			request.setRawHeader("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.135 Safari/537.36");
 			request.setAttribute(QNetworkRequest::FollowRedirectsAttribute, true);
@@ -413,5 +412,5 @@ void DLSiteClient::StartRename(const QStringList& _files)
 		}
 	}
 	//为了让没有文件需要重命名时也有响应
-	emit renameStatusFinished();
+	emit renameStatusChanged();
 }

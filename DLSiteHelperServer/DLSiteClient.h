@@ -28,24 +28,24 @@ public:
 	DLSiteClient();
 	~DLSiteClient();
 	//线程不安全，只能从主线程调用
-	void StartDownload(const QByteArray& cookies,const std::vector<std::string>& works);
+	void StartDownload(const QByteArray& cookies,const QStringList& works);
 	void StartRename(const QStringList& files);
 signals:
-	void downloadStatusFinished();
-	void renameStatusFinished();
+	void downloadStatusChanged();
+	void renameStatusChanged();
 protected:
 	static QString unicodeToString(const QString& str);
-	void onReceiveType(QNetworkReply*, std::string id);
-	void onReceiveProductInfo(QNetworkReply*, std::string id);
-	void onReceiveDownloadTry(QNetworkReply*, std::string id, int idx);
-	void onDownloadStatusFinished();
-	void onRenameStatusFinished();
+	void onReceiveType(QNetworkReply*, QString id);
+	void onReceiveProductInfo(QNetworkReply*, QString id);
+	void onReceiveDownloadTry(QNetworkReply*, QString id, int idx);
+	void onDownloadStatusChanged();
+	void onRenameStatusChanged();
 	void SendTaskToIDM();
 
 	QNetworkAccessManager manager;
 	QByteArray cookies;
 	bool running = false;//不管执行哪个任务都用一个running，因为有共用的成员
-	std::map<std::string, State> status;
+	std::map<QString, State> status;
 	QStringList local_files;
 	const std::string DOWNLOAD_DIR = "D:/IDMDownload/AutoDownload/";
 };

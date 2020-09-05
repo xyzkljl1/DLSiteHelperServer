@@ -2,6 +2,7 @@
 #include "DLSiteClient.h"
 #include <QTcpServer>
 #include <QStringList>
+#include <QTimer>
 class DBProxyServer:public QTcpServer
 {
 	Q_OBJECT
@@ -14,11 +15,11 @@ protected:
 	void onReceived(QTcpSocket* conn);
 	void onReleased(QTcpSocket* conn);
 
-	void sendStandardResponse(QTcpSocket* conn, const std::string& message);
-	void sendFailResponse(QTcpSocket* conn, const std::string& message);
-	std::string GetAllInvalidWork();
-	std::string GetAllOverlapWork();
-	std::string UpdateBoughtItems(const QByteArray& data);
+	void sendStandardResponse(QTcpSocket* conn, const QString& message);
+	void sendFailResponse(QTcpSocket* conn, const QString& message);
+	QString GetAllInvalidWork();
+	QString GetAllOverlapWork();
+	QString UpdateBoughtItems(const QByteArray& data);
 
 	void SyncLocalFile();
 
@@ -39,5 +40,6 @@ protected:
 		QString::fromLocal8Bit("D:/IDMDownload/tmp/")
 	};
 	DLSiteClient client;
+	QTimer daily_timer;
 };
 

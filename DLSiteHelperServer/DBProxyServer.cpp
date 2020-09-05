@@ -27,6 +27,10 @@ DBProxyServer::DBProxyServer()
 		exit(-1);
 	}
 	SyncLocalFile();
+	daily_timer.setInterval(86400);
+	daily_timer.start();
+	//每天更新本地文件
+	connect(&daily_timer, &QTimer::timeout, this, &DBProxyServer::SyncLocalFile);
 }
 
 DBProxyServer::~DBProxyServer()
@@ -92,13 +96,13 @@ void DBProxyServer::onReceived(QTcpSocket * conn)
 		QString tmp = QString::fromLocal8Bit(request_target.c_str());
 		if (request_target.find("/?QueryInvalidDLSite")==0)
 		{
-			std::string ret = GetAllInvalidWork();
+			auto ret = GetAllInvalidWork();
 			sendStandardResponse(conn, ret);
 			printf("Response Query Request\n");
 		}
 		else if (request_target.find("/?QueryOverlapDLSite")==0)
 		{
-			std::string ret = GetAllOverlapWork();
+			auto ret = GetAllOverlapWork();
 			sendStandardResponse(conn, ret);
 			printf("Response Query Request\n");
 		}
@@ -115,7 +119,7 @@ void DBProxyServer::onReceived(QTcpSocket * conn)
 		}
 		else if (request_target.find("/?UpdateBoughtItems")==0)
 		{
-			std::string ret = UpdateBoughtItems(data);
+			auto ret = UpdateBoughtItems(data);
 			sendStandardResponse(conn,ret);
 			printf("Update Bought Items\n");
 		}
@@ -192,30 +196,30 @@ void DBProxyServer::onReleased(QTcpSocket * conn)
 	conn->deleteLater();
 }
 
-void DBProxyServer::sendFailResponse(QTcpSocket * conn, const std::string& message)
+void DBProxyServer::sendFailResponse(QTcpSocket * conn, const QString& message)
 {
 	QString response = QString("HTTP/1.1 404\r\n"
 		"Cache-Control : private\r\n"
 		"Access-Control-Allow-Headers:*\r\n"
 		"Content-Length:%1\r\n"
 		"Content-Type : text/html; charset = utf-8\r\n\r\n"
-		"%2\r\n\r\n").arg(message.size()).arg(QString::fromLocal8Bit(message.c_str()));
+		"%2\r\n\r\n").arg(message.size()).arg(message);
 	conn->write(response.toLocal8Bit());
 	conn->waitForBytesWritten();
 }
 
-void DBProxyServer::sendStandardResponse(QTcpSocket * conn, const std::string& message)
+void DBProxyServer::sendStandardResponse(QTcpSocket * conn, const QString& message)
 {
 	QString response = QString("HTTP/1.1 200 OK\r\n"
 		"Cache-Control : private\r\n"
 		"Access-Control-Allow-Headers:*\r\n"
 		"Content-Length:%1\r\n"
 		"Content-Type : text/html; charset = utf-8\r\n\r\n"
-		"%2\r\n\r\n").arg(message.size()).arg(QString::fromLocal8Bit(message.c_str()));
+		"%2\r\n\r\n").arg(message.size()).arg(message);
 	conn->write(response.toLocal8Bit());
 	conn->waitForBytesWritten();
 }
-std::string DBProxyServer::GetAllOverlapWork()
+QString DBProxyServer::GetAllOverlapWork()
 {
 	DataBase database;
 	std::map<std::string,std::set<std::string>> overlap_work;
@@ -241,10 +245,10 @@ std::string DBProxyServer::GetAllOverlapWork()
 	if(ret.size()>2)//去掉最后一个逗号
 		ret.pop_back();
 	ret += "}";
-	return ret;
+	return QString::fromLocal8Bit(ret.c_str());
 }
 
-std::string DBProxyServer::UpdateBoughtItems(const QByteArray & data)
+QString DBProxyServer::UpdateBoughtItems(const QByteArray & data)
 {
 	DataBase database;
 	QRegExp reg(WORK_NAME_EXP);
@@ -275,7 +279,7 @@ std::string DBProxyServer::UpdateBoughtItems(const QByteArray & data)
 	return "Sucess";
 }
 
-std::string DBProxyServer::GetAllInvalidWork()
+QString DBProxyServer::GetAllInvalidWork()
 {
 	std::set<std::string> invalid_work;
 	//已下载/标记/购买的作品是invalid
@@ -321,7 +325,7 @@ std::string DBProxyServer::GetAllInvalidWork()
 	std::string ret;
 	for(const auto& id:invalid_work)
 		ret += (ret.empty() ? "" : " ") + id;
-	return ret;
+	return QString::fromLocal8Bit(ret.c_str());
 }
 
 void DBProxyServer::SyncLocalFile()
@@ -359,12 +363,12 @@ void DBProxyServer::SyncLocalFile()
 		ret = atoi(row[0]);
 	mysql_free_result(result);
 
-	printf("Sync from local %d works->%d\n", ct.size(),ret);
+	printf("Sync from local %zd works->%d\n", ct.size(),ret);
 }
 
 void DBProxyServer::DownloadAll(const QByteArray&cookie)
 {
-	std::vector<std::string> works;
+	QStringList works;
 	{
 		DataBase database;
 		mysql_query(&database.my_sql, "select id from works where downloaded=0 and bought=1 and eliminated=0;");
@@ -373,12 +377,11 @@ void DBProxyServer::DownloadAll(const QByteArray&cookie)
 			printf("%s\n", mysql_error(&database.my_sql));
 		MYSQL_ROW row;
 		while (row = mysql_fetch_row(result))
-			works.push_back(row[0]);
+			works.push_back(QString::fromLocal8Bit(row[0]));
 		mysql_free_result(result);
 	}
 	client.StartDownload(cookie,works);
 }
-
 
 void DBProxyServer::RenameLocal()
 {
