@@ -100,6 +100,7 @@ void DLSiteClient::SendTaskToIDM()
 			case WorkType::PROGRAM:path += "Game/"; break;
 			default:path += "Default";
 			}
+			//zip的解压完还需要转码，所以要和rar区分开
 			if (task.download_ext.count("zip"))
 				path += "zip/";
 			else if (task.download_ext.count("rar"))

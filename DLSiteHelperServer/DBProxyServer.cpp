@@ -384,9 +384,9 @@ void DBProxyServer::RenameLocal()
 {
 	QStringList ret;
 	QStringList local_files;
-	for (auto&dir : local_dirs)
+	for (auto&dir : local_dirs+local_tmp_dirs)
 		for(auto& info: QDir(dir).entryInfoList({ "*" }, QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name))
-		local_files.append(info.filePath());
+			local_files.append(info.filePath());
 	QRegExp reg(WORK_NAME_EXP);
 	std::set<std::string> ct;
 	for (auto& dir : local_files)

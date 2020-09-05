@@ -34,6 +34,10 @@ protected:
 		QString::fromLocal8Bit("D:/video/exe/"),
 		QString::fromLocal8Bit("D:/IDMDownload/avater/")
 		 };
+	//只参与rename,不视作已下载
+	QStringList local_tmp_dirs = {
+		QString::fromLocal8Bit("D:/IDMDownload/tmp/")
+	};
 	DLSiteClient client;
 };
 
