@@ -27,7 +27,7 @@ DBProxyServer::DBProxyServer()
 		exit(-1);
 	}
 	SyncLocalFile();
-	daily_timer.setInterval(86400);
+	daily_timer.setInterval(86400*1000);
 	daily_timer.start();
 	//每天更新本地文件
 	connect(&daily_timer, &QTimer::timeout, this, &DBProxyServer::SyncLocalFile);
