@@ -15,4 +15,5 @@ DLSiteHelper的本地Server,需要使用本地的mysql数据库
   
 ## Reference  
   
-* https://github.com/unamer/IDMHelper
+* https://github.com/unamer/IDMHelper  
+* https://github.com/sxei/chrome-plugin-demo  
