@@ -43,14 +43,14 @@
     <Import Project="$(QtMsBuild)\qt_defaults.props" />
   </ImportGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
-    <IncludePath>E:\ChromeExt\DLSiteHelperServer\mysql\include;E:\ChromeExt\DLSiteHelperServer\boost_1_74_0;E:\ChromeExt\DLSiteHelperServer\IDMHelper;$(IncludePath)</IncludePath>
+    <IncludePath>E:\ChromeExt\DLSiteHelperServer\mysql\include;E:\ChromeExt\DLSiteHelperServer\boost_1_74_0;E:\ChromeExt\DLSiteHelperServer\IDMAPI;$(IncludePath)</IncludePath>
     <LibraryPath>E:\ChromeExt\DLSiteHelperServer\mysql\lib;$(LibraryPath)</LibraryPath>
-    <ReferencePath>E:\ChromeExt\DLSiteHelperServer\IDMHelper;$(ReferencePath)</ReferencePath>
+    <ReferencePath>E:\ChromeExt\DLSiteHelperServer\IDMAPI;$(ReferencePath)</ReferencePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
-    <IncludePath>E:\ChromeExt\DLSiteHelperServer\mysql\include;E:\ChromeExt\DLSiteHelperServer\boost_1_74_0;E:\ChromeExt\DLSiteHelperServer\IDMHelper;$(IncludePath)</IncludePath>
+    <IncludePath>E:\ChromeExt\DLSiteHelperServer\mysql\include;E:\ChromeExt\DLSiteHelperServer\boost_1_74_0;E:\ChromeExt\DLSiteHelperServer\IDMAPI;$(IncludePath)</IncludePath>
     <LibraryPath>E:\ChromeExt\DLSiteHelperServer\mysql\lib;$(LibraryPath)</LibraryPath>
-    <ReferencePath>E:\ChromeExt\DLSiteHelperServer\IDMHelper;$(ReferencePath)</ReferencePath>
+    <ReferencePath>E:\ChromeExt\DLSiteHelperServer\IDMAPI;$(ReferencePath)</ReferencePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Link>
