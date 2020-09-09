@@ -108,6 +108,7 @@ void DBProxyServer::onReceived(QTcpSocket * conn)
 		}
 		else if (request_target.find("/?Download")==0)
 		{
+			SyncLocalFile();
 			DownloadAll(data);
 			sendStandardResponse(conn, "Started");
 			printf("Response Download Request\n");

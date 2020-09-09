@@ -81,17 +81,24 @@ void DLSiteClient::SendTaskToIDM()
 		IID_ICIDMLinkTransmitter2,
 		(void**)&pIDM);
 	int ct = 0;
+	int no_download_ct = 0;
 	if (S_OK == hr)
 		for (const auto& task_pair : status)
 		{
 			bool success = true;
 			auto& task = task_pair.second;
+			if (task.type == WorkType::CANTDOWNLOAD)
+			{
+				no_download_ct++;
+				continue;
+			}
 			if (!task.ready)
 				continue;
 			if (task.failed)
 				continue;
 			if (task.urls.empty())
 				continue;
+
 			std::string path=DOWNLOAD_DIR;
 			switch (task.type) {
 			case WorkType::AUDIO:path += "ASMR/"; break;
@@ -138,7 +145,7 @@ void DLSiteClient::SendTaskToIDM()
 	else
 		puts("[-] CoCreateInstance fail!");
 	pIDM->Release();
-	printf("%d in %zd Task Created\n",ct,status.size());
+	printf("%d in %zd Task Created,$d is not for download\n",ct,status.size()- no_download_ct, no_download_ct);
 	this->running = false;
 	status.clear();
 }
@@ -184,7 +191,9 @@ void DLSiteClient::onReceiveType(QNetworkReply* res, QString id)
 			}
 			//优先根据文件形式判断，其次根据作品类型判断
 			//因为有的作品格式跟一般的不一致
-			if (types.contains("EXE"))//文件形式:软件
+			if (types.contains("WBO"))//文件形式:浏览器专用，不下载 ※最优先
+				status[id].type = WorkType::CANTDOWNLOAD;
+			else if (types.contains("EXE"))//文件形式:软件
 				status[id].type = WorkType::PROGRAM;
 			else if (types.contains("MP4"))//文件形式:MP4
 				status[id].type = WorkType::VIDEO;

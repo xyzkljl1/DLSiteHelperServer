@@ -14,7 +14,8 @@ public:
 		AUDIO,//音频
 		PICTURE,//图片
 		PROGRAM,//程序
-		OTHER//获取失败/获取到了但不知道是什么
+		OTHER,//获取失败/获取到了但不知道是什么
+		CANTDOWNLOAD//浏览器专用，无法下载
 	};
 	struct State {
 		WorkType type = UNKNOWN;//作品的类型
