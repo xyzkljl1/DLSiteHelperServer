@@ -20,6 +20,7 @@ const int SQL_LENGTH_LIMIT = 10000;
 
 DBProxyServer::DBProxyServer()
 {
+	//通过HKEY_LOCAL_MACHINE/SYSTEM/CurrentControlSet/Services/Tcpip/Parameters/ReservedPorts项将端口设为保留
 	connect(this, &DBProxyServer::newConnection, this, &DBProxyServer::onConnected);
 	if (!listen(QHostAddress::LocalHost, 4567))
 	{

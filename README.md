@@ -12,6 +12,7 @@ DLSiteHelper的本地Server,需要使用本地的mysql数据库
 在DBProxyServer.h中配置本地目录  
 (如果不使用VS工程)配置对Qt、mysql、boost、[booost.http](https://github.com/BoostGSoC14/boost.http)、[IDMAPI](http://www.internetdownloadmanager.com/support/idm_api.html)的依赖  
 确保mysql/openssl/Qt的dll对程序可见  
+确保端口4567可用(可通过注册表HKEY_LOCAL_MACHINE/SYSTEM/CurrentControlSet/Services/Tcpip/Parameters/ReservedPorts项将端口设为保留,或手动释放)  
   
 ## Reference  
   
