@@ -44,12 +44,12 @@
   </ImportGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
     <IncludePath>$(SolutionDir)mysql\include;$(SolutionDir)boost_1_74_0;$(SolutionDir)IDMAPI;$(IncludePath);$(SolutionDir)cpr\include;$(SolutionDir)tufao\include</IncludePath>
-    <LibraryPath>$(SolutionDir)mysql\lib;$(SolutionDir)cpr\lib;$(SolutionDir)tufao\lib;$(LibraryPath)</LibraryPath>
+    <LibraryPath>$(SolutionDir)mysql\lib;$(SolutionDir)cpr\lib\$(Configuration);$(SolutionDir)tufao\lib;$(LibraryPath)</LibraryPath>
     <ReferencePath>$(SolutionDir)IDMAPI;$(ReferencePath)</ReferencePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
     <IncludePath>$(SolutionDir)mysql\include;$(SolutionDir)boost_1_74_0;$(SolutionDir)IDMAPI;$(IncludePath);$(SolutionDir)cpr\include;$(SolutionDir)tufao\include</IncludePath>
-    <LibraryPath>$(SolutionDir)mysql\lib;$(SolutionDir)cpr\lib;$(SolutionDir)tufao\lib;$(LibraryPath)</LibraryPath>
+    <LibraryPath>$(SolutionDir)mysql\lib;$(SolutionDir)cpr\lib\$(Configuration);$(SolutionDir)tufao\lib;$(LibraryPath)</LibraryPath>
     <ReferencePath>$(SolutionDir)IDMAPI;$(ReferencePath)</ReferencePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
