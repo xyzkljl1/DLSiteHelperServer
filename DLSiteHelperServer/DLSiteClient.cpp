@@ -23,7 +23,7 @@ DLSiteClient::~DLSiteClient()
 
 void DLSiteClient::SendTaskToIDM(StateMap status)
 {
-	ICIDMLinkTransmitter2* pIDM;//必须在主线程创建
+	ICIDMLinkTransmitter2* pIDM;
 	HRESULT hr = CoCreateInstance(CLSID_CIDMLinkTransmitter,
 		NULL,
 		CLSCTX_LOCAL_SERVER,
@@ -163,7 +163,7 @@ void DLSiteClient::DownloadProcess(cpr::Cookies cookies, QStringList works)
 		futures[id.toStdString()] = std::async(TryDownloadWork, id.toStdString(), cookies);
 	for (auto& pair : futures)//应该用whenall,但是并没有
 		status[pair.first.c_str()] = pair.second.get();
-	emit signalStartDownload(status);
+	emit signalStartDownload(status);//SendTasktoIDM必须在主线程运行，所需要通过信号调用
 	running = false;
 }
 DLSiteClient::State DLSiteClient::TryDownloadWork(std::string id, cpr::Cookies cookie) {

@@ -43,7 +43,7 @@ protected:
 	static bool RenameFile(const QString & file, const QString & id, const QString & work_name);
 	static State TryDownloadWork(std::string id, cpr::Cookies cookie);
 	static WorkType FindWorkTypeFromWeb(const std::string& page,const std::string&id);
-	static void SendTaskToIDM(StateMap status);
+	static void SendTaskToIDM(StateMap status);//必须在主线程运行
 
 	static QString unicodeToString(const QString& str);
 
