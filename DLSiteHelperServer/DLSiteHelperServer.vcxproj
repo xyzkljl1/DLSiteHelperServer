@@ -43,33 +43,35 @@
     <Import Project="$(QtMsBuild)\qt_defaults.props" />
   </ImportGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
-    <IncludePath>$(SolutionDir)mysql\include;$(SolutionDir)boost_1_74_0;$(SolutionDir)IDMAPI;$(IncludePath)</IncludePath>
-    <LibraryPath>$(SolutionDir)mysql\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(SolutionDir)mysql\include;$(SolutionDir)boost_1_74_0;$(SolutionDir)IDMAPI;$(IncludePath);$(SolutionDir)cpr\include;$(SolutionDir)tufao\include</IncludePath>
+    <LibraryPath>$(SolutionDir)mysql\lib;$(SolutionDir)cpr\lib;$(SolutionDir)tufao\lib;$(LibraryPath)</LibraryPath>
     <ReferencePath>$(SolutionDir)IDMAPI;$(ReferencePath)</ReferencePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
-    <IncludePath>$(SolutionDir)mysql\include;$(SolutionDir)boost_1_74_0;$(SolutionDir)IDMAPI;$(IncludePath)</IncludePath>
-    <LibraryPath>$(SolutionDir)mysql\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(SolutionDir)mysql\include;$(SolutionDir)boost_1_74_0;$(SolutionDir)IDMAPI;$(IncludePath);$(SolutionDir)cpr\include;$(SolutionDir)tufao\include</IncludePath>
+    <LibraryPath>$(SolutionDir)mysql\lib;$(SolutionDir)cpr\lib;$(SolutionDir)tufao\lib;$(LibraryPath)</LibraryPath>
     <ReferencePath>$(SolutionDir)IDMAPI;$(ReferencePath)</ReferencePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Link>
-      <AdditionalDependencies>libmysql.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>tufao1d.lib;cpr.lib;libmysql.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalOptions>/NODEFAULTLIB:library %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Link>
-      <AdditionalDependencies>libmysql.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>tufao1.lib;cpr.lib;libmysql.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalOptions>/NODEFAULTLIB:library %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="QtSettings">
     <QtInstall>msvc2017_64</QtInstall>
-    <QtModules>core;network;widgets</QtModules>
+    <QtModules>core;network;widgets;</QtModules>
     <QtBuildConfig>debug</QtBuildConfig>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="QtSettings">
     <QtInstall>msvc2017_64</QtInstall>
-    <QtModules>core;network;widgets</QtModules>
+    <QtModules>core;network;widgets;</QtModules>
     <QtBuildConfig>release</QtBuildConfig>
   </PropertyGroup>
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.props')">

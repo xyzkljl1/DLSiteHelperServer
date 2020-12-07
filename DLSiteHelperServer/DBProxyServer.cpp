@@ -1,32 +1,21 @@
 #include "DBProxyServer.h"
 #include "DLSiteClient.h"
-#include <boost/version.hpp>
-#include <boost/config.hpp>
-#include <boost/asio/buffer.hpp>
-#include <boost/http/reader/request.hpp>
-#include <boost/http/reader/response.hpp>
-#include <QTcpSocket>
 #include <QRegExp>
 #include <QDir>
-#include <iostream>
+#include <QUrl>
 #include <string>
 #include <map>
 #include <set>
-//必须放在boost后面
 #include "DataBase.h"
 
 const int SQL_LENGTH_LIMIT = 10000;
 #define WORK_NAME_EXP "[RVBJ]{2}[0-9]{3,6}"
 
-DBProxyServer::DBProxyServer()
+DBProxyServer::DBProxyServer(QObject* parent):Tufao::HttpServer(parent)
 {
 	//通过HKEY_LOCAL_MACHINE/SYSTEM/CurrentControlSet/Services/Tcpip/Parameters/ReservedPorts项将端口设为保留
-	connect(this, &DBProxyServer::newConnection, this, &DBProxyServer::onConnected);
-	if (!listen(QHostAddress::LocalHost, 4567))
-	{
-		printf("Cant listen\n");
-		exit(-1);
-	}
+	listen(QHostAddress::Any, 4567);
+	connect(this, &DBProxyServer::requestReady, this, &DBProxyServer::HandleRequest);
 	SyncLocalFile();
 	daily_timer.setInterval(86400*1000);
 	daily_timer.start();
@@ -43,184 +32,115 @@ QRegExp DBProxyServer::GetWorkNameExp()
 	return QRegExp(WORK_NAME_EXP);
 }
 
-void DBProxyServer::onConnected()
+void DBProxyServer::HandleRequest(Tufao::HttpServerRequest & request, Tufao::HttpServerResponse & response)
 {
-	auto conn = nextPendingConnection();
-	connect(conn, &QTcpSocket::readyRead, this, std::bind(&DBProxyServer::onReceived, this, conn));
-	connect(conn, &QTcpSocket::disconnected, this, std::bind(&DBProxyServer::onReleased, this, conn));
-}
-
-void DBProxyServer::onReceived(QTcpSocket * conn)
-{
-	auto byte_array=conn->readAll();
-	boost::asio::const_buffer buffer(byte_array.data(),byte_array.size());
-	boost::http::reader::request reader;
-	reader.set_buffer(buffer);
-	std::string method,host, request_target;
-	std::string att_name;
-	std::size_t nparsed = 0;
-	QByteArray data;
-	while (reader.code() != boost::http::token::code::end_of_message&&reader.code()!= boost::http::token::code::error_insufficient_data) {
-		switch (reader.code()) {
-		case boost::http::token::code::skip:break;
-		case boost::http::token::code::method:
-			method = reader.value<boost::http::token::method>().to_string();
-			break;
-		case boost::http::token::code::request_target:
-			request_target = reader.value<boost::http::token::request_target>().to_string();
-			break;
-		case boost::http::token::code::field_name:
-		case boost::http::token::code::trailer_name:
-			att_name = reader.value<boost::http::token::field_name>().to_string();
-			break;
-		case boost::http::token::code::field_value:
-		case boost::http::token::code::trailer_value:
-			if (att_name == "Host")
-				host = reader.value<boost::http::token::field_value>().to_string();
-			att_name = "";
-			break;
-		case boost::http::token::code::body_chunk:
-			data = byte_array.mid(nparsed,reader.token_size());
-			break;
-		}
-		nparsed += reader.token_size();
-		reader.next();
-	}
-	nparsed += reader.token_size();
-	reader.next();
-	
-	if (reader.code() == boost::http::token::code::error_insufficient_data)
+	QString request_target = request.url().toString();
+	QRegExp reg_mark_eliminated("(/\?markEliminated)(" WORK_NAME_EXP ")");
+	QRegExp reg_mark_special_eliminated("(/\?markSpecialEliminated)(" WORK_NAME_EXP ")");
+	QRegExp reg_mark_overlap("(/\?markOverlap)&main=(" WORK_NAME_EXP ")&sub=(" WORK_NAME_EXP ")&duplex=([0-9])");
+	if (request_target.startsWith("/?QueryInvalidDLSite"))
 	{
-		QRegExp reg_mark_eliminated("(/\?markEliminated)(" WORK_NAME_EXP ")");
-		QRegExp reg_mark_special_eliminated("(/\?markSpecialEliminated)(" WORK_NAME_EXP ")");
-		QRegExp reg_mark_overlap("(/\?markOverlap)&main=(" WORK_NAME_EXP ")&sub=(" WORK_NAME_EXP ")&duplex=([0-9])");
-		QString tmp = QString::fromLocal8Bit(request_target.c_str());
-		if (request_target.find("/?QueryInvalidDLSite")==0)
+		auto ret = GetAllInvalidWork();
+		ReplyText(response, Tufao::HttpResponseStatus::OK, ret);
+		printf("Response Query Request\n");
+	}
+	else if (request_target.startsWith("/?QueryOverlapDLSite"))
+	{
+		auto ret = GetAllOverlapWork();
+		ReplyText(response, Tufao::HttpResponseStatus::OK, ret);
+		printf("Response Query Request\n");
+	}
+	else if (request_target.startsWith("/?Download"))
+	{
+		SyncLocalFile();
+		DownloadAll(request.readBody());
+		ReplyText(response, Tufao::HttpResponseStatus::OK, "Started");
+		printf("Response Download Request\n");
+	}
+	else if (request_target.startsWith("/?RenameLocal")) {
+		RenameLocal();
+		ReplyText(response, Tufao::HttpResponseStatus::OK, "Started");
+		printf("Response Rename Request\n");
+	}
+	else if (request_target.startsWith("/?UpdateBoughtItems"))
+	{
+		auto ret = UpdateBoughtItems(request.readBody());
+		ReplyText(response, Tufao::HttpResponseStatus::OK, ret);
+		printf("Update Bought Items\n");
+	}
+	else if (reg_mark_eliminated.indexIn(request_target) > 0)
+	{
+		if (!reg_mark_eliminated.cap(2).isEmpty())
 		{
-			auto ret = GetAllInvalidWork();
-			sendStandardResponse(conn, ret);
-			printf("Response Query Request\n");
-		}
-		else if (request_target.find("/?QueryOverlapDLSite")==0)
-		{
-			auto ret = GetAllOverlapWork();
-			sendStandardResponse(conn, ret);
-			printf("Response Query Request\n");
-		}
-		else if (request_target.find("/?Download")==0)
-		{
-			SyncLocalFile();
-			DownloadAll(data);
-			sendStandardResponse(conn, "Started");
-			printf("Response Download Request\n");
-		}
-		else if (request_target.find("/?RenameLocal") == 0) {
-			RenameLocal();
-			sendStandardResponse(conn, "Started");
-			printf("Response Rename Request\n");
-		}
-		else if (request_target.find("/?UpdateBoughtItems")==0)
-		{
-			auto ret = UpdateBoughtItems(data);
-			sendStandardResponse(conn,ret);
-			printf("Update Bought Items\n");
-		}
-		else if (reg_mark_eliminated.indexIn(tmp)>0)
-		{
-			if (!reg_mark_eliminated.cap(2).isEmpty())
-			{
-				std::string id = reg_mark_eliminated.cap(2).toLocal8Bit().toStdString();
-				DataBase database;
-				std::string  cmd = "INSERT IGNORE INTO works(id) VALUES(\"" + id + "\");"
-					"UPDATE works SET eliminated = 1 WHERE id = \"" + id + "\"; ";
-				mysql_query(&database.my_sql, cmd.c_str());
-				if (mysql_errno(&database.my_sql))
-				{
-					printf("%s\n", mysql_error(&database.my_sql));
-					sendFailResponse(conn,"SQL Fail");
-				}
-				else
-				{
-					sendStandardResponse(conn, "Sucess");
-					printf("Mark %s Eliminated\n", id.c_str());
-				}
-			}
-		}
-		else if (reg_mark_special_eliminated.indexIn(tmp) > 0)
-		{
-			if (!reg_mark_special_eliminated.cap(2).isEmpty())
-			{
-				std::string id = reg_mark_special_eliminated.cap(2).toLocal8Bit().toStdString();
-				DataBase database;
-				std::string  cmd = "INSERT IGNORE INTO works(id) VALUES(\"" + id + "\");"
-					"UPDATE works SET specialEliminated = 1 WHERE id = \"" + id + "\"; ";
-				mysql_query(&database.my_sql, cmd.c_str());
-				if (mysql_errno(&database.my_sql))
-				{
-					printf("%s\n", mysql_error(&database.my_sql));
-					sendFailResponse(conn, "SQL Fail");
-				}
-				else
-				{
-					sendStandardResponse(conn, "Sucess");
-					printf("Mark %s Special Eliminated\n", id.c_str());
-				}
-			}
-		}
-		else if (reg_mark_overlap.indexIn(tmp) > 0)
-		{
-			std::string main_id = reg_mark_overlap.cap(2).toLocal8Bit().toStdString();
-			std::string sub_id = reg_mark_overlap.cap(3).toLocal8Bit().toStdString();
-			bool duplex = reg_mark_overlap.cap(4).toInt();
+			std::string id = reg_mark_eliminated.cap(2).toLocal8Bit().toStdString();
 			DataBase database;
-			std::string cmd = "INSERT IGNORE INTO works(id) VALUES(\"" + main_id + "\");"
-							"INSERT IGNORE INTO works(id) VALUES(\"" + sub_id + "\");"
-							"INSERT IGNORE INTO overlap VALUES(\"" + main_id + "\",\"" + sub_id + "\");"
-							+(duplex?std::string("INSERT IGNORE INTO overlap VALUES(\"" + sub_id + "\",\"" + main_id + "\");"): std::string());
+			std::string  cmd = "INSERT IGNORE INTO works(id) VALUES(\"" + id + "\");"
+				"UPDATE works SET eliminated = 1 WHERE id = \"" + id + "\"; ";
 			mysql_query(&database.my_sql, cmd.c_str());
 			if (mysql_errno(&database.my_sql))
 			{
 				printf("%s\n", mysql_error(&database.my_sql));
-				sendFailResponse(conn, "SQL Fail");
+				ReplyText(response, Tufao::HttpResponseStatus::NOT_FOUND, "SQL Fail");
 			}
 			else
 			{
-				sendStandardResponse(conn, "Sucess");
-				printf("Mark Overlap %s%s %s\n", duplex ? "Duplex " : "", main_id.c_str(), sub_id.c_str());
+				ReplyText(response, Tufao::HttpResponseStatus::OK, "Success");
+				printf("Mark %s Eliminated\n", id.c_str());
 			}
 		}
 	}
-	conn->disconnectFromHost();
+	else if (reg_mark_special_eliminated.indexIn(request_target) > 0)
+	{
+		if (!reg_mark_special_eliminated.cap(2).isEmpty())
+		{
+			std::string id = reg_mark_special_eliminated.cap(2).toLocal8Bit().toStdString();
+			DataBase database;
+			std::string  cmd = "INSERT IGNORE INTO works(id) VALUES(\"" + id + "\");"
+				"UPDATE works SET specialEliminated = 1 WHERE id = \"" + id + "\"; ";
+			mysql_query(&database.my_sql, cmd.c_str());
+			if (mysql_errno(&database.my_sql))
+			{
+				printf("%s\n", mysql_error(&database.my_sql));
+				ReplyText(response, Tufao::HttpResponseStatus::NOT_FOUND, "SQL Fail");
+			}
+			else
+			{
+				ReplyText(response, Tufao::HttpResponseStatus::OK, "Success");
+				printf("Mark %s Special Eliminated\n", id.c_str());
+			}
+		}
+	}
+	else if (reg_mark_overlap.indexIn(request_target) > 0)
+	{
+		std::string main_id = reg_mark_overlap.cap(2).toLocal8Bit().toStdString();
+		std::string sub_id = reg_mark_overlap.cap(3).toLocal8Bit().toStdString();
+		bool duplex = reg_mark_overlap.cap(4).toInt();
+		DataBase database;
+		std::string cmd = "INSERT IGNORE INTO works(id) VALUES(\"" + main_id + "\");"
+			"INSERT IGNORE INTO works(id) VALUES(\"" + sub_id + "\");"
+			"INSERT IGNORE INTO overlap VALUES(\"" + main_id + "\",\"" + sub_id + "\");"
+			+ (duplex ? std::string("INSERT IGNORE INTO overlap VALUES(\"" + sub_id + "\",\"" + main_id + "\");") : std::string());
+		mysql_query(&database.my_sql, cmd.c_str());
+		if (mysql_errno(&database.my_sql))
+		{
+			printf("%s\n", mysql_error(&database.my_sql));
+			ReplyText(response, Tufao::HttpResponseStatus::NOT_FOUND, "SQL Fail");
+		}
+		else
+		{
+			ReplyText(response, Tufao::HttpResponseStatus::OK, "Success");
+			printf("Mark Overlap %s%s %s\n", duplex ? "Duplex " : "", main_id.c_str(), sub_id.c_str());
+		}
+	}
 }
 
-void DBProxyServer::onReleased(QTcpSocket * conn)
+void DBProxyServer::ReplyText(Tufao::HttpServerResponse & response,const Tufao::HttpResponseStatus&status, const QString & message)
 {
-	conn->deleteLater();
+	response.writeHead(Tufao::HttpResponseStatus::OK);
+	response.headers().replace("Content-Type", "text/plain");
+	response.end(message.toLocal8Bit());
 }
 
-void DBProxyServer::sendFailResponse(QTcpSocket * conn, const QString& message)
-{
-	QString response = QString("HTTP/1.1 404\r\n"
-		"Cache-Control : private\r\n"
-		"Access-Control-Allow-Headers:*\r\n"
-		"Content-Length:%1\r\n"
-		"Content-Type : text/html; charset = utf-8\r\n\r\n"
-		"%2\r\n\r\n").arg(message.size()).arg(message);
-	conn->write(response.toLocal8Bit());
-	conn->waitForBytesWritten();
-}
-
-void DBProxyServer::sendStandardResponse(QTcpSocket * conn, const QString& message)
-{
-	QString response = QString("HTTP/1.1 200 OK\r\n"
-		"Cache-Control : private\r\n"
-		"Access-Control-Allow-Headers:*\r\n"
-		"Content-Length:%1\r\n"
-		"Content-Type : text/html; charset = utf-8\r\n\r\n"
-		"%2\r\n\r\n").arg(message.size()).arg(message);
-	conn->write(response.toLocal8Bit());
-	conn->waitForBytesWritten();
-}
 QString DBProxyServer::GetAllOverlapWork()
 {
 	DataBase database;

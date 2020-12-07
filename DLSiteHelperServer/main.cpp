@@ -4,7 +4,7 @@
 int main(int argc, char *argv[])
 {
 	QApplication a(argc, argv);
-	DBProxyServer server;
+	DBProxyServer server(&a);
 	std::set<std::string> args;
 	for (int i = 1; i < argc; ++i)
 		args.insert(argv[i]);

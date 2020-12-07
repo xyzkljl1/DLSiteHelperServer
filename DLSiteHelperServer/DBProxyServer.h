@@ -1,28 +1,29 @@
 #pragma once
 #include "DLSiteClient.h"
-#include <QTcpServer>
 #include <QStringList>
 #include <QTimer>
-class DBProxyServer:public QTcpServer
+#include "tufao/HttpServer"
+#include "Tufao/HttpServerRequest"
+#include "Tufao/HttpServerResponse"
+#include "Tufao/Headers"
+
+class DBProxyServer:public Tufao::HttpServer
 {
 	Q_OBJECT
 public:
-	DBProxyServer();
+	DBProxyServer(QObject* parent);
 	~DBProxyServer();
 	static QRegExp GetWorkNameExp();
 protected:
-	void onConnected();
-	void onReceived(QTcpSocket* conn);
-	void onReleased(QTcpSocket* conn);
+	void HandleRequest(Tufao::HttpServerRequest &request, Tufao::HttpServerResponse &response);
+	void ReplyText(Tufao::HttpServerResponse & response, const Tufao::HttpResponseStatus&status, const QString & message);
 
-	void sendStandardResponse(QTcpSocket* conn, const QString& message);
-	void sendFailResponse(QTcpSocket* conn, const QString& message);
+	
 	QString GetAllInvalidWork();
 	QString GetAllOverlapWork();
 	QString UpdateBoughtItems(const QByteArray& data);
 
 	void SyncLocalFile();
-
 	void DownloadAll(const QByteArray& cookie);
 	void RenameLocal();
 protected:
