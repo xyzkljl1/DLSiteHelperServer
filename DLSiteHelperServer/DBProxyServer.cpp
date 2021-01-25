@@ -204,9 +204,9 @@ QString DBProxyServer::UpdateBoughtItems(const QByteArray & data)
 QString DBProxyServer::GetAllInvalidWork()
 {
 	std::set<std::string> invalid_work;
-	//已下载/标记/购买的作品是invalid
-	//SpecialEliminate的作品不会令覆盖的作品变为invalid所以要放在后面加入
-	{
+	//覆盖的作品全部invalid的作品未必是invalid，因为可能有额外的内容
+	//被非invalid覆盖的作品不是invalid，因为可能有合并和分开购买的不同需求	
+	{//已下载/标记/购买的作品是invalid
 		DataBase database;
 		mysql_query(&database.my_sql, "select id from works where eliminated=1 or downloaded=1 or bought=1;");
 		auto result = mysql_store_result(&database.my_sql);
@@ -217,23 +217,31 @@ QString DBProxyServer::GetAllInvalidWork()
 			invalid_work.insert(row[0]);
 		mysql_free_result(result);
 	}
-	{//被invalid的作品覆盖的作品也是invalid
+	{//被invalid作品覆盖的作品也是invalid
 		DataBase database;
 		mysql_query(&database.my_sql, "select Main,Sub from overlap;");
 		auto result = mysql_store_result(&database.my_sql);
 		if (mysql_errno(&database.my_sql))
 			printf("%s\n", mysql_error(&database.my_sql));
-		MYSQL_ROW row;
-		//暂时认为没有多层的覆盖关系，即没有合集的合集/三个作品相同但每个作品的描述里只写了与一个重合的情况
-		while (row = mysql_fetch_row(result))
-			if(invalid_work.count(std::string(row[0])))
-				invalid_work.insert(row[1]);
-		mysql_free_result(result);
+		//覆盖关系是有多层的，例如一个作品有中日英版，中英版的介绍里各自只写了与日文版相通，然后买了中文版，就构成了一个链条
+		std::vector<std::pair<std::string, std::string>> relationship;
+		{
+			MYSQL_ROW row;
+			while (row = mysql_fetch_row(result))
+				relationship.push_back({ row[0],row[1] });
+			mysql_free_result(result);
+		}
+		int tmp=0;
+		do//一直循环到找不到新的覆盖关系为止
+			for(auto & pair:relationship)
+				if (invalid_work.count(pair.first)&&!invalid_work.count(pair.second))
+				{				
+					invalid_work.insert(pair.second);
+					tmp++;
+				}
+		while (tmp);
 	}
-	//覆盖的作品全部invalid的作品未必是invalid，因为可能有额外的内容
-	//被非invalid覆盖的作品也是非invalid，因为可能有合并和分开购买的不同需求
-	//最后加入specialEliminated
-	{
+	{//最后加入specialEliminated，SpecialEliminate的作品不会令覆盖的作品变为invalid所以要放在后面加入
 		DataBase database;
 		mysql_query(&database.my_sql, "select id from works where specialEliminated=1;");
 		auto result = mysql_store_result(&database.my_sql);

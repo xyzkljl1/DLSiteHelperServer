@@ -28,12 +28,12 @@ protected:
 	void RenameLocal();
 protected:
 	QStringList local_dirs = {
-		QString::fromLocal8Bit("D:/ASMR_archive/"),
-		QString::fromLocal8Bit("D:/ASMR_cant_archive/"),
-		QString::fromLocal8Bit("D:/ASMR_c/"),
-		QString::fromLocal8Bit("D:/video/pic/"),
-		QString::fromLocal8Bit("D:/video/anime/"),
-		QString::fromLocal8Bit("D:/video/exe/"),
+		QString::fromLocal8Bit("G:/ASMR_archive/"),
+		QString::fromLocal8Bit("G:/ASMR_cant_archive/"),
+		QString::fromLocal8Bit("G:/ASMR_Chinese/"),
+		QString::fromLocal8Bit("G:/DL_Pic/"),
+		QString::fromLocal8Bit("G:/DL_Anime/"),
+		QString::fromLocal8Bit("G:/DL_Game/"),
 		QString::fromLocal8Bit("D:/IDMDownload/avater/")
 		 };
 	//只参与rename,不视作已下载
