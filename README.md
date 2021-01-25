@@ -21,6 +21,8 @@ DLSiteHelper的本地Server,需要使用本地的mysql数据库
 
 ## TODO
 
+修复首页上方横幅的无法去除已阅作品的bug
+
 修复有时页面加载完，但插件没有去除已阅作品的bug
 
 解决pixel.tapad.com/idsync.rlcdn.com无法访问导致页面加载过慢的问题
