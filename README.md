@@ -18,3 +18,9 @@ DLSiteHelper的本地Server,需要使用本地的mysql数据库
   
 * https://github.com/unamer/IDMHelper  
 * https://github.com/sxei/chrome-plugin-demo  
+
+## TODO
+
+修复有时页面加载完，但插件没有去除已阅作品的bug
+
+解决pixel.tapad.com/idsync.rlcdn.com无法访问导致页面加载过慢的问题
