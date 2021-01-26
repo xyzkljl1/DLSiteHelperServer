@@ -231,14 +231,17 @@ QString DBProxyServer::GetAllInvalidWork()
 				relationship.push_back({ row[0],row[1] });
 			mysql_free_result(result);
 		}
-		int tmp=0;
+		int tmp = 0;
 		do//一直循环到找不到新的覆盖关系为止
-			for(auto & pair:relationship)
-				if (invalid_work.count(pair.first)&&!invalid_work.count(pair.second))
-				{				
+		{
+			tmp = 0;
+			for (auto & pair : relationship)
+				if (invalid_work.count(pair.first) && !invalid_work.count(pair.second))
+				{
 					invalid_work.insert(pair.second);
 					tmp++;
 				}
+		}
 		while (tmp);
 	}
 	{//最后加入specialEliminated，SpecialEliminate的作品不会令覆盖的作品变为invalid所以要放在后面加入
