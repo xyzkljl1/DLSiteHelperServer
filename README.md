@@ -19,10 +19,29 @@ DLSiteHelper的本地Server,需要使用本地的mysql数据库
 * https://github.com/unamer/IDMHelper  
 * https://github.com/sxei/chrome-plugin-demo  
 
+## Other 
+
+(暂定)解决某些请求过慢的问题:
+
+在host里添加:
+
+35.227.248.159 pixel.tapad.com
+
+35.211.114.141 x.bidswitch.net
+
+35.244.245.222 idsync.rlcdn.com
+
+50.116.194.21 r.turn.com
+
+用SwitchyOmega设置代理规则：
+
+file.chobit.cc直连(试听)
+
+idsync.rlcdn.com走专用代理(垃圾请求)
+
+其它请求走岛风Go
+
+
 ## TODO
 
-修复首页上方横幅的无法去除已阅作品的bug
-
 修复有时页面加载完，但插件没有去除已阅作品的bug
-
-解决pixel.tapad.com/idsync.rlcdn.com无法访问导致页面加载过慢的问题
