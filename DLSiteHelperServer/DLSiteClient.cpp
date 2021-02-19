@@ -308,7 +308,9 @@ DLSiteClient::WorkType DLSiteClient::FindWorkTypeFromWeb(const std::string& page
 		return WorkType::VIDEO;
 	else if (types.count("MNG") || types.count("ICG"))//作品类型:漫画、CG
 		return WorkType::PICTURE;
-	else if (types.count("WPD") || types.count("PDF") || types.count("icon_HTF"))//文件形式:PDF同捆、PDF、HTML(flash)，无法确定类型
+	else if (types.count("PVA"))//文件形式:专用浏览器，通常和WPD一起出现并且是图片类型，但是不能如同图片一般打开，视作其它
+		return WorkType::OTHER;
+	else if (types.count("WPD") || types.count("PDF") || types.count("icon_HTF"))//文件形式:专用浏览器、PDF同捆、PDF、HTML(flash)，无法确定类型
 		return WorkType::OTHER;
 	else if (types.count("AVI"))//文件形式:AVI，无法确定类型
 		return WorkType::OTHER;
