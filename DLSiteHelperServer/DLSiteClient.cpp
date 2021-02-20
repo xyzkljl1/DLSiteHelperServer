@@ -338,7 +338,7 @@ void DLSiteClient::StartDownload(const QByteArray& _cookies, const QByteArray& u
 	}
 
 	//DownloadProcess(pIDM, cookies, works);
-	std::thread thread(&DLSiteClient::DownloadProcess, this, cookies,works);
+	std::thread thread(&DLSiteClient::DownloadProcess, this, cookies,cpr::UserAgent(user_agent.toStdString()),works);
 	thread.detach();
 }
 
