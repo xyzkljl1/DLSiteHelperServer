@@ -53,6 +53,7 @@ void DBProxyServer::HandleRequest(Tufao::HttpServerRequest & request, Tufao::Htt
 	else if (request_target.startsWith("/?Download"))
 	{
 		SyncLocalFile();
+		//user-agent与cookie需要符合，user-agent通过请求的user-agent，cookie通过请求的data获得
 		DownloadAll(request.readBody(), request.headers().value("user-agent"));
 		ReplyText(response, Tufao::HttpResponseStatus::OK, "Started");
 		printf("Response Download Request\n");
