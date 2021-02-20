@@ -53,7 +53,7 @@ void DBProxyServer::HandleRequest(Tufao::HttpServerRequest & request, Tufao::Htt
 	else if (request_target.startsWith("/?Download"))
 	{
 		SyncLocalFile();
-		DownloadAll(request.readBody());
+		DownloadAll(request.readBody(), request.headers().value("user-agent"));
 		ReplyText(response, Tufao::HttpResponseStatus::OK, "Started");
 		printf("Response Download Request\n");
 	}
@@ -299,7 +299,7 @@ void DBProxyServer::SyncLocalFile()
 	printf("Sync from local %zd works->%d\n", ct.size(),ret);
 }
 
-void DBProxyServer::DownloadAll(const QByteArray&cookie)
+void DBProxyServer::DownloadAll(const QByteArray&cookie, const QByteArray& user_agent)
 {
 	QStringList works;
 	{
@@ -313,7 +313,7 @@ void DBProxyServer::DownloadAll(const QByteArray&cookie)
 			works.push_back(QString::fromLocal8Bit(row[0]));
 		mysql_free_result(result);
 	}
-	client.StartDownload(cookie,works);
+	client.StartDownload(cookie,user_agent,works);
 }
 
 void DBProxyServer::RenameLocal()

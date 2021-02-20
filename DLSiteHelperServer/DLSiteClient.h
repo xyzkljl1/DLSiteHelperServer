@@ -30,7 +30,7 @@ public:
 	DLSiteClient();
 	~DLSiteClient();
 	//线程不安全，只能从主线程调用
-	void StartDownload(const QByteArray& cookies,const QStringList& works);
+	void StartDownload(const QByteArray& cookies, const QByteArray& user_agent,const QStringList& works);
 	void StartRename(const QStringList& files);
 	using StateMap = std::map<std::string, DLSiteClient::State >;
 signals:
@@ -38,10 +38,10 @@ signals:
 protected:
 	//以防万一直接传值
 	void RenameProcess(QStringList local_files);
-	void DownloadProcess(cpr::Cookies _cookies, QStringList works);
+	void DownloadProcess(cpr::Cookies _cookies,cpr::UserAgent user_agent, QStringList works);
 	static std::string format(const char * format, ...);
 	static bool RenameFile(const QString & file, const QString & id, const QString & work_name);
-	static State TryDownloadWork(std::string id, cpr::Cookies cookie);
+	static State TryDownloadWork(std::string id, cpr::Cookies cookie, cpr::UserAgent user_agent);
 	static WorkType FindWorkTypeFromWeb(const std::string& page,const std::string&id);
 	static void SendTaskToIDM(StateMap status);//必须在主线程运行
 

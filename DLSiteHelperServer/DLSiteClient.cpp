@@ -155,24 +155,24 @@ void DLSiteClient::RenameProcess(QStringList local_files)
 	}
 	running = false;
 }
-void DLSiteClient::DownloadProcess(cpr::Cookies cookies, QStringList works)
+void DLSiteClient::DownloadProcess(cpr::Cookies cookies,cpr::UserAgent user_agent, QStringList works)
 {
 	StateMap status;
 	std::map<std::string, std::future<State>> futures;
 	for (const auto& id : works)
-		futures[id.toStdString()] = std::async(TryDownloadWork, id.toStdString(), cookies);
+		futures[id.toStdString()] = std::async(TryDownloadWork, id.toStdString(), cookies,user_agent);
 	for (auto& pair : futures)//应该用whenall,但是并没有
 		status[pair.first.c_str()] = pair.second.get();
 	emit signalStartDownload(status);//SendTasktoIDM必须在主线程运行，所需要通过信号调用
 	running = false;
 }
-DLSiteClient::State DLSiteClient::TryDownloadWork(std::string id, cpr::Cookies cookie) {
+DLSiteClient::State DLSiteClient::TryDownloadWork(std::string id, cpr::Cookies cookie, cpr::UserAgent user_agent) {
 	DLSiteClient::State status;
 	cpr::Session session;
 	session.SetVerifySsl(cpr::VerifySsl{ false });
 	session.SetProxies(cpr::Proxies{ {std::string("https"), std::string("127.0.0.1:8000")} });
 	session.SetCookies(cookie);
-	session.SetHeader(cpr::Header{ {"user-agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"} });
+	session.SetUserAgent(user_agent);
 	//url的第一级根据卖场分为manix、pro、books，但是实际可以随便用
 	//产品页面的第二级根据是否发售分为work、announce,下载的肯定都是work
 	//获取类型
@@ -320,7 +320,7 @@ DLSiteClient::WorkType DLSiteClient::FindWorkTypeFromWeb(const std::string& page
 	return WorkType::OTHER;
 }
 
-void DLSiteClient::StartDownload(const QByteArray& _cookies, const QStringList& works)
+void DLSiteClient::StartDownload(const QByteArray& _cookies, const QByteArray& user_agent, const QStringList& works)
 {
 	if (this->running)
 		return;

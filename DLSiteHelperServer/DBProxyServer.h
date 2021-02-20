@@ -24,7 +24,7 @@ protected:
 	QString UpdateBoughtItems(const QByteArray& data);
 
 	void SyncLocalFile();
-	void DownloadAll(const QByteArray& cookie);
+	void DownloadAll(const QByteArray& cookie, const QByteArray& user_agent);
 	void RenameLocal();
 protected:
 	QStringList local_dirs = {
