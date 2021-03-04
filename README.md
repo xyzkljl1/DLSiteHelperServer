@@ -1,18 +1,17 @@
 # DLSiteHelperServer  
-DLSiteHelper的本地Server,需要使用本地的mysql数据库  
+[DLSiteHelper](https://github.com/xyzkljl1/DLSiteHelper)的本地Server,需要使用本地的mysql数据库  
 用于提供插件和数据库的交互、同步已下载商品列表、批量下载、批量重命名  
 
 
 使用前需要:  
-在浏览器上登录DLSite并具有合法的cookie  
-在本地运行mysql服务端，使用build_database.sql创建数据库  
-于DBProxyServer.h/DLSiteClient.h/DLSiteClient.cpp设置本地存储和下载地址  
-另行安装Qt5.14、VS2017(可选)  
-安装并运行IDM(Internet Download Manager)  
-在DBProxyServer.h中配置本地目录  
+在Chrome上登录DLSite运行DLSiteHelper插件  
+在本地4321端口运行mysql服务端，使用build_database.sql创建数据库  
+于DLConfig.h/cpp配置目录和端口  
+安装Qt5.14、VS2017(可选)  
+安装并运行[IDM(Internet Download Manager)](http://www.internetdownloadmanager.com)  
 (如果不使用VS工程)配置对Qt、mysql、tufao、cpr、[IDMAPI](http://www.internetdownloadmanager.com/support/idm_api.html)的依赖  
-确保mysql/openssl/Qt/tufao/cpr的dll对程序可见  
-确保端口4567可用(可通过注册表HKEY_LOCAL_MACHINE/SYSTEM/CurrentControlSet/Services/Tcpip/Parameters/ReservedPorts项将端口设为保留,或手动释放)  
+确保openssl/tufao/cpr下的dll以及mysql/Qt的dll对程序可见  
+确保端口4567空闲  
   
 ## Reference  
   
@@ -45,3 +44,5 @@ idsync.rlcdn.com走专用代理(垃圾请求)
 ## TODO
 
 修复有时页面加载完，但插件没有去除已阅作品的bug
+
+修复购物车页面和添加至购物车的弹出窗口下方的列表未去除已阅作品的bug

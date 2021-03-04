@@ -14,7 +14,7 @@ const int SQL_LENGTH_LIMIT = 10000;
 DBProxyServer::DBProxyServer(QObject* parent):Tufao::HttpServer(parent)
 {
 	//通过HKEY_LOCAL_MACHINE/SYSTEM/CurrentControlSet/Services/Tcpip/Parameters/ReservedPorts项将端口设为保留
-	listen(QHostAddress::Any, 4567);
+	listen(QHostAddress::Any, DLConfig::SERVER_PORT);
 	connect(this, &DBProxyServer::requestReady, this, &DBProxyServer::HandleRequest);
 	SyncLocalFile();
 	daily_timer.setInterval(86400*1000);
@@ -265,7 +265,7 @@ QString DBProxyServer::GetAllInvalidWork()
 void DBProxyServer::SyncLocalFile()
 {
 	QStringList local_files;
-	for (auto&dir : local_dirs)
+	for (auto&dir : DLConfig::local_dirs)
 		local_files.append(QDir(dir).entryList({ "*" }, QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name));
 	std::string cmd;
 	QRegExp reg(WORK_NAME_EXP);
@@ -321,7 +321,7 @@ void DBProxyServer::RenameLocal()
 {
 	QStringList ret;
 	QStringList local_files;
-	for (auto&dir : local_dirs+local_tmp_dirs)
+	for (auto&dir : DLConfig::local_dirs+ DLConfig::local_tmp_dirs)
 		for(auto& info: QDir(dir).entryInfoList({ "*" }, QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name))
 			local_files.append(info.filePath());
 	QRegExp reg(WORK_NAME_EXP);

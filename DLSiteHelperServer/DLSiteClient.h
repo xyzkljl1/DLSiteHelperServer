@@ -1,4 +1,5 @@
 #pragma once
+#include "DLConfig.h"
 #include <QObject>
 #include <QByteArray>
 #include <set>
@@ -48,6 +49,5 @@ protected:
 	static QString unicodeToString(const QString& str);
 
 	std::atomic<bool> running = false;//不管执行哪个任务都用一个running，因为有共用的成员
-	static const std::string DOWNLOAD_DIR;
 };
 

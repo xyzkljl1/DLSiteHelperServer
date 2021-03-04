@@ -9,7 +9,6 @@
 #include <comutil.h>
 #include <atlthunk.h>
 #include "DBProxyServer.h"
-const std::string DLSiteClient::DOWNLOAD_DIR = "D:/IDMDownload/AutoDownload/";
 Q_DECLARE_METATYPE(DLSiteClient::StateMap);//沙雕宏认不出来逗号，所以必须起个别名
 DLSiteClient::DLSiteClient()
 {
@@ -46,7 +45,7 @@ void DLSiteClient::SendTaskToIDM(StateMap status)
 			if (task.urls.empty())
 				continue;
 
-			std::string path = DOWNLOAD_DIR;
+			std::string path = DLConfig::DOWNLOAD_DIR;
 			switch (task.type) {
 			case WorkType::AUDIO:path += "ASMR/"; break;
 			case WorkType::VIDEO:path += "Video/"; break;
