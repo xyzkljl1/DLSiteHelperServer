@@ -194,21 +194,8 @@ DLSiteClient::State DLSiteClient::TryDownloadWork(std::string id, cpr::Cookies c
 	while (true) {
 		session.SetUrl(cpr::Url{ url });
 		auto res = session.Head();
-		if (res.header.count("set-cookie"))//返回的cookie需用于下载,需要带上原cookie否则会很快过期
-		{
-			status.cookie = "";
-			for (auto&pair : QByteArray(res.header["set-cookie"].c_str()).split(';'))
-			{
-				pair = pair.trimmed();
-				if (pair.size() > 1)
-				{
-					auto tmp = pair.split('=');
-					cookie[tmp[0].toStdString()] = tmp[1];
-				}
-			}
-			for (auto& pair : cookie)
-				status.cookie += QString::fromLocal8Bit((pair.first + "=" + pair.second + "; ").c_str());
-		}
+		if (res.header.count("set-cookie"))
+			status.cookie += res.header["set-cookie"].c_str();
 		if (res.status_code == 302)
 		{
 			if (res.header["location"] == "Array")//分段下载，此时初始网址不一样(为https://www.dlsite.com/maniax/download/split/=/product_id/%1.html),试图用单段下载的url访问时会重定向到"Array"

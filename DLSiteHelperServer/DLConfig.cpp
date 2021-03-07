@@ -6,11 +6,11 @@ const QStringList DLConfig::local_dirs = {
 							QString::fromLocal8Bit("G:/DL_Pic/"),
 							QString::fromLocal8Bit("G:/DL_Anime/"),
 							QString::fromLocal8Bit("G:/DL_Game/"),
-							QString::fromLocal8Bit("D:/IDMDownload/avater/")
+							QString::fromLocal8Bit("E:/IDMDownload/avater/")
 							};
 //只参与rename,不视作已下载
 const QStringList DLConfig::local_tmp_dirs = {
-							QString::fromLocal8Bit("D:/IDMDownload/tmp/")
+							QString::fromLocal8Bit("E:/IDMDownload/tmp/")
 							};
 
-const std::string DLConfig::DOWNLOAD_DIR = "D:/IDMDownload/AutoDownload/";
+const std::string DLConfig::DOWNLOAD_DIR = "E:/IDMDownload/AutoDownload/";
