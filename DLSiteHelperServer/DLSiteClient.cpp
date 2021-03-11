@@ -1,96 +1,193 @@
 #include "DLSiteClient.h"
-#include "cpr/cpr.h"
-#include <QDir>
-#include <QMetaType>   
-#include <regex>
-#import "IDManTypeInfo.tlb" 
-#include "IDManTypeInfo.h"            
-#include "IDManTypeInfo_i.c"
-#include <comutil.h>
-#include <atlthunk.h>
 #include "DBProxyServer.h"
+#include <regex>
+#include <QDir>
+#include <QCoreApplication>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include "cpr/cpr.h"
 Q_DECLARE_METATYPE(DLSiteClient::StateMap);//沙雕宏认不出来逗号，所以必须起个别名
 DLSiteClient::DLSiteClient()
 {
 	qRegisterMetaType<DLSiteClient::StateMap>();
-	connect(this, &DLSiteClient::signalStartDownload, this, &DLSiteClient::SendTaskToIDM);
+	auto timer = new QTimer(this);
+	timer->setSingleShot(false);
+	timer->setInterval(1000 * 60 * 60);
+	connect(timer, &QTimer::timeout, this, std::bind(&DLSiteClient::CheckAria2Status,this,false));
+	CheckAria2Status(true);
 }
 
 DLSiteClient::~DLSiteClient()
 {
 }
-
-void DLSiteClient::SendTaskToIDM(StateMap status)
-{
-	ICIDMLinkTransmitter2* pIDM;
-	HRESULT hr = CoCreateInstance(CLSID_CIDMLinkTransmitter,
-		NULL,
-		CLSCTX_LOCAL_SERVER,
-		IID_ICIDMLinkTransmitter2,
-		(void**)&pIDM);
-	int ct = 0;
-	int no_download_ct = 0;
-	if (hr == S_OK)
-		for (const auto& task_pair : status)
+void DLSiteClient::CheckAria2Status(bool init) {
+	if (init)
+	{
+		//TODO:关闭之前的aria2
+	}
+	//file-allocation=falloc时需提权
+	if ((!aria2_process) || aria2_process->state() != QProcess::Running)
+	{
+		if (aria2_process)
 		{
-			const auto&task = task_pair.second;
-			bool success = true;
-			if (task.type == WorkType::CANTDOWNLOAD)
-			{
-				no_download_ct++;
-				continue;
-			}
-			if (!task.ready)
-				continue;
-			if (task.urls.empty())
-				continue;
-
-			std::string path = DLConfig::DOWNLOAD_DIR;
-			switch (task.type) {
-			case WorkType::AUDIO:path += "ASMR/"; break;
-			case WorkType::VIDEO:path += "Video/"; break;
-			case WorkType::PICTURE:path += "CG/"; break;
-			case WorkType::PROGRAM:path += "Game/"; break;
-			default:path += "Default/";
-			}
-			//zip的解压完还需要转码，所以要和rar区分开
-			if (task.download_ext.count("zip"))
-				path += "zip/";
-			else if (task.download_ext.count("rar"))
-				path += "rar/";
-			else
-				path += "other/";
-			if (!QDir(QString::fromLocal8Bit(path.c_str())).exists())
-				QDir().mkpath(QString::fromLocal8Bit(path.c_str()));
-			for (int i = 0; i < task.urls.size(); ++i)
-			{
-				VARIANT var;
-				VariantInit(&var);
-				var.vt = VT_EMPTY;
-				_bstr_t url(task.urls[i].c_str());
-				_bstr_t fname(task.file_names[i].c_str());
-				_bstr_t referer("https://play.dlsite.com/#/library");
-				_bstr_t path_b(path.c_str());
-				_bstr_t cookies(task.cookie.toStdString().c_str());
-				_bstr_t data("");
-				_bstr_t user("");
-				_bstr_t pass("");
-				int flags = 0x01 | 0x02;//0x01:不确认，0x02:稍后下载
-
-				hr = pIDM->SendLinkToIDM2(url, referer, cookies, data, user, pass, path_b, fname, flags, var, var);
-
-				if (S_OK != hr)
-				{
-					puts("[-] SendLinkToIDM2 fail!");
-					success = false;
-				}
-			}
-			if (success)
-				ct++;
+			aria2_process->close();
+			aria2_process->waitForFinished();
+			delete aria2_process;
 		}
-	else
-		printf("CoCreate IDM Instacne Failed\n");
-	printf("%d in %zd Task Created,%d is not for download\n",ct,status.size()- no_download_ct, no_download_ct);
+		auto dir = QCoreApplication::applicationDirPath();
+		aria2_process = new QProcess(this);
+		aria2_process->setWorkingDirectory(QCoreApplication::applicationDirPath() + "/aria2");
+		aria2_process->setProcessEnvironment(QProcessEnvironment::systemEnvironment());
+		aria2_process->setProgram("\"" + QCoreApplication::applicationDirPath() + "/aria2/aria2c(DLSite).exe\"");//有括号/空格的路径需要用引号括起来
+		aria2_process->setArguments({ "--conf-path=aria2.conf","--all-proxy=" + DLConfig::ARIA2_PROXY,
+									QString("--rpc-listen-port=%1").arg(DLConfig::ARIA2_PORT),/*"--referer=\"https://www.dlsite.com/\"","--check-certificate=false"*/ });
+#ifdef _DEBUG
+		//显示窗口
+		aria2_process->setCreateProcessArgumentsModifier(
+			[](QProcess::CreateProcessArguments * args) {
+			args->flags |= CREATE_NEW_CONSOLE;
+			args->startupInfo->dwFlags &= ~STARTF_USESTDHANDLES;
+		});
+#endif
+		aria2_process->start();
+		aria2_process->waitForStarted();
+	}
+}
+bool DLSiteClient::CheckTaskStatus(bool init)
+{
+	if (init)//清理目标目录，防止错误的文件影响下载
+		QDir(DLConfig::DOWNLOAD_DIR).removeRecursively();		
+	/*
+	aria2中出错的任务无法继续，只能创建一个新的替代它(会自动断点续传)
+	如果任务太多导致旧的任务被释放，可能会令查询得不到正确的结果
+	考虑到不会下载很多文件，在配置文件中将max-download-result调大就能避免这个问题
+	*/
+	cpr::Session session;
+	session.SetUrl(cpr::Url{ QString("http://127.0.0.1:%1/jsonrpc").arg(DLConfig::ARIA2_PORT).toStdString()});
+
+	StateMap tmp_task_map;
+	//aria2任务计数
+	int unknown_ct = 0;
+	int update_ct = 0;
+	int running_ct = 0;
+	int complete_ct = 0;
+	int total_ct = 0;
+	int update_success_ct = 0;
+	for (auto& task_pair : task_map)
+	{
+		auto&task = task_pair.second;
+		if (task.type == WorkType::CANTDOWNLOAD)
+			continue;
+		if (!task.ready)
+			continue;
+		if (task.urls.empty())
+			continue;
+		//找到需要更新的子任务
+		total_ct += task.urls.size();
+		std::vector<int> update_index;//需要更新的子任务的索引
+		for (int i = 0; i < task.aria_id.size(); ++i)//aria_id和url的size应该是一致的
+			if (task.aria_id[i] == "")
+				update_index.push_back(i);
+			else
+			{
+				std::string data =
+					format("{\"jsonrpc\": \"2.0\",\"id\":\"DLSite\",\"method\": \"aria2.tellStatus\","
+							"\"params\": [\"token:%s\",\"%s\"]}",
+							DLConfig::ARIA2_SECRET.c_str(),
+							task.aria_id[i].c_str());
+				session.SetBody(cpr::Body{ data.c_str() });
+				auto response = session.Post();
+				if (response.status_code != 200)
+				{
+					printf("Query Aria2 Error %s on %s\n", response.text.c_str(),task.urls[i].c_str());
+					unknown_ct++;
+					continue;
+				}
+				QJsonParseError error;
+				QJsonDocument doc = QJsonDocument::fromJson(response.text.c_str(), &error);
+				if (error.error != QJsonParseError::NoError || !doc.object().contains("result"))
+				{
+					unknown_ct++;
+					continue;
+				}
+				auto result = doc.object().value("result").toObject();
+				QString task_status = result.value("status").toString();
+	//			printf("Status:%s %f\n", task_status.toStdString().c_str(), result.value("completedLength").toString().toInt() / 1024.0f);
+				//active,waiting,paused,error,complete,removed
+				if (task_status == "error" || task_status == "paused" || task_status == "removed")
+					update_index.push_back(i);
+				else if (task_status == "complete")
+					complete_ct++;
+				else
+					running_ct++;
+			}
+		update_ct += update_index.size();
+		if (update_index.empty())
+			continue;
+		if (!init)//如果不是第一次创建任务，失效的任务可能是由于cookie过期，需要重新获取
+			task.cookie=TryDownloadWork(task_pair.first, main_cookies, cpr::UserAgent{ user_agent.c_str() }, true).cookie;
+		//更新子任务
+		std::string path = DLConfig::DOWNLOAD_DIR.toLocal8Bit().toStdString();
+		switch (task.type) {
+		case WorkType::AUDIO:path += "ASMR/"; break;
+		case WorkType::VIDEO:path += "Video/"; break;
+		case WorkType::PICTURE:path += "CG/"; break;
+		case WorkType::PROGRAM:path += "Game/"; break;
+		default:path += "Default/";
+		}
+		//zip的解压完还需要转码，所以要和rar区分开
+		if (task.download_ext.count("zip"))
+			path += "zip/";
+		else if (task.download_ext.count("rar"))
+			path += "rar/";
+		else
+			path += "other/";
+		if (!QDir(QString::fromLocal8Bit(path.c_str())).exists())
+			QDir().mkpath(QString::fromLocal8Bit(path.c_str()));
+		for (auto& i:update_index)
+		{
+			 std::string data =
+				format("{\"jsonrpc\": \"2.0\",\"id\":\"DLSite\",\"method\": \"aria2.addUri\","
+					"\"params\": [\"token:%s\",[\"%s\"],{\"dir\":\"%s\",\"out\":\"%s\""
+					",\"header\":[\"User-Agent: %s\",\"Cookie: %s\"]"
+					"}]}",
+						DLConfig::ARIA2_SECRET.c_str(), 
+						task.urls[i].c_str(), 
+						path.c_str(), 
+						task.file_names[i].c_str(), 
+						user_agent.c_str(),
+						task.cookie.c_str());
+			 session.SetBody(cpr::Body{data.c_str()});
+			 auto response =session.Post();
+			 if (response.status_code != 200)
+			 {
+				 printf("Update Aria2 Error %s on %s\n", response.text.c_str(), task.urls[i].c_str());
+				 continue;
+			 }
+			 QJsonParseError jsonError;
+			 QJsonDocument doc=QJsonDocument::fromJson(response.text.c_str(),&jsonError);
+			 if (jsonError.error != QJsonParseError::NoError)
+			 {
+				 printf("Update Aria2 Error %s on %s\n", response.text.c_str(), task.urls[i].c_str());
+				 continue;
+			 }
+			 auto root = doc.object();
+			 if (root.contains("result"))
+			 {
+				 task.aria_id[i] = root.value("result").toString().toStdString();
+				 update_success_ct++;
+			 }
+		}
+		if (init)
+			tmp_task_map.insert(task_pair);
+	}
+	if (init)
+	{
+		printf("Start Download %d/%d works\n",(int)tmp_task_map.size(), (int)task_map.size());
+		task_map = tmp_task_map;
+	}
+	printf("%d(Running)/%d(Updating)/%d(Done)/%d(Unknown) in %d files. %d/%d updated\n",running_ct,update_ct,complete_ct,unknown_ct,total_ct,update_success_ct,update_ct);
+	return complete_ct == total_ct;
 }
 
 QString DLSiteClient::unicodeToString(const QString& str)
@@ -125,7 +222,7 @@ bool DLSiteClient::RenameFile(const QString& file,const QString& id,const QStrin
 	qDebug() << "Cant Rename " << old_name << "->" << new_name;
 	return false;
 }
-void DLSiteClient::RenameProcess(QStringList local_files)
+void DLSiteClient::RenameThread(QStringList local_files)
 {
 	cpr::Session session;//不需要cookie
 	session.SetVerifySsl(cpr::VerifySsl{ false });
@@ -154,22 +251,27 @@ void DLSiteClient::RenameProcess(QStringList local_files)
 	}
 	running = false;
 }
-void DLSiteClient::DownloadProcess(cpr::Cookies cookies,cpr::UserAgent user_agent, QStringList works)
+void DLSiteClient::DownloadThread(QStringList works)
 {
-	StateMap status;
+	task_map.clear();
 	std::map<std::string, std::future<State>> futures;
+	QStringList tmp;
+//	works = QStringList{ "RJ317750" };
 	for (const auto& id : works)
-		futures[id.toStdString()] = std::async(TryDownloadWork, id.toStdString(), cookies,user_agent);
+		futures[id.toStdString()] = std::async(&TryDownloadWork, id.toStdString(), main_cookies,user_agent,false);
 	for (auto& pair : futures)//应该用whenall,但是并没有
-		status[pair.first.c_str()] = pair.second.get();
-	emit signalStartDownload(status);//SendTasktoIDM必须在主线程运行，所需要通过信号调用
+		task_map[pair.first.c_str()] = pair.second.get();
+	CheckTaskStatus(true);
+	do
+		Sleep(1000 * 60*30);
+	while (!CheckTaskStatus(false));
 	running = false;
 }
-DLSiteClient::State DLSiteClient::TryDownloadWork(std::string id, cpr::Cookies cookie, cpr::UserAgent user_agent) {
-	DLSiteClient::State status;
+DLSiteClient::State DLSiteClient::TryDownloadWork(std::string id,cpr::Cookies cookie, cpr::UserAgent user_agent, bool only_refresh_cookie) {
+	DLSiteClient::State task;
 	cpr::Session session;
 	session.SetVerifySsl(cpr::VerifySsl{ false });
-	session.SetProxies(cpr::Proxies{ {std::string("https"), std::string("127.0.0.1:8000")} });
+	session.SetProxies(cpr::Proxies{ {DLConfig::REQUEST_PROXY_TYPE, DLConfig::REQUEST_PROXY} });
 	session.SetCookies(cookie);
 	session.SetUserAgent(user_agent);
 	//url的第一级根据卖场分为manix、pro、books，但是实际可以随便用
@@ -181,12 +283,12 @@ DLSiteClient::State DLSiteClient::TryDownloadWork(std::string id, cpr::Cookies c
 		session.SetUrl(cpr::Url{ url });
 		auto res=session.Get();
 		if (res.status_code == 200)
-			status.type = FindWorkTypeFromWeb(res.text,id);
+			task.type = GetWorkTypeFromWeb(res.text,id);
 		else
-			status.type = WorkType::UNKNOWN;
+			task.type = WorkType::UNKNOWN;
 	}
-	if (status.type == WorkType::CANTDOWNLOAD)
-		return status;
+	if (task.type == WorkType::CANTDOWNLOAD)
+		return task;
 	//获取真实连接
 	session.SetRedirect(false);//不能使用自动重定向，因为需要记录重定向前的set-cookie以及判别是否分段下载
 	std::string url = DLSiteClient::format("https://www.dlsite.com/maniax/download/=/product_id/%s.html", id.c_str());
@@ -195,7 +297,24 @@ DLSiteClient::State DLSiteClient::TryDownloadWork(std::string id, cpr::Cookies c
 		session.SetUrl(cpr::Url{ url });
 		auto res = session.Head();
 		if (res.header.count("set-cookie"))
-			status.cookie += res.header["set-cookie"].c_str();
+		{
+			task.cookie = "";
+			cpr::Cookies download_cookie = cookie;
+			QString new_cookie = res.header["set-cookie"].c_str();
+			for (auto&pair : new_cookie.split(';'))
+			{
+				pair = pair.trimmed();
+				if (pair.size() > 1)
+				{
+					auto tmp = pair.split('=');
+					download_cookie[tmp[0].toStdString()] = tmp[1].toStdString();
+				}
+			}
+			for (auto&pair : download_cookie)
+				task.cookie += (pair.first + "=" + pair.second + "; ").c_str();
+			if (only_refresh_cookie)
+				return task;
+		}
 		if (res.status_code == 302)
 		{
 			if (res.header["location"] == "Array")//分段下载，此时初始网址不一样(为https://www.dlsite.com/maniax/download/split/=/product_id/%1.html),试图用单段下载的url访问时会重定向到"Array"
@@ -229,14 +348,14 @@ DLSiteClient::State DLSiteClient::TryDownloadWork(std::string id, cpr::Cookies c
 				if (pos >= 0)
 					ext = file_name.substr(pos+1);
 
-				status.file_names.push_back(file_name);
-				status.urls.push_back(url);
+				task.file_names.push_back(file_name);
+				task.urls.push_back(url);
 				if (!ext.empty())
-					status.download_ext.insert(ext);
+					task.download_ext.insert(ext);
 
 				if (idx == 0)//单段下载
 				{
-					status.ready = true;
+					task.ready = true;
 					break;
 				}
 				else //多段下载，尝试下一段
@@ -247,18 +366,19 @@ DLSiteClient::State DLSiteClient::TryDownloadWork(std::string id, cpr::Cookies c
 		}
 		else if (res.status_code == 404 && idx > 1)//多段下载到达末尾
 		{
-			status.ready = true;
+			task.ready = true;
 			break;
 		}
 		else//失败
 			break;
 	}
-	if (!status.ready)
+	if (!task.ready)
 		qDebug() << "Receive " << id.c_str() << " Error:";
-	return status;
+	task.aria_id.resize(task.urls.size(), "");
+	return task;
 }
 
-DLSiteClient::WorkType DLSiteClient::FindWorkTypeFromWeb(const std::string& page,const std::string&id)
+DLSiteClient::WorkType DLSiteClient::GetWorkTypeFromWeb(const std::string& page,const std::string&id)
 {
 	/*
 	<div class="work_genre">
@@ -319,31 +439,31 @@ DLSiteClient::WorkType DLSiteClient::FindWorkTypeFromWeb(const std::string& page
 	return WorkType::OTHER;
 }
 
-void DLSiteClient::StartDownload(const QByteArray& _cookies, const QByteArray& user_agent, const QStringList& works)
+void DLSiteClient::StartDownload(const QByteArray& _cookies, const QByteArray& _user_agent, const QStringList& works)
 {
 	if (this->running)
 		return;
 	//因为都是在主线程运行，所以这里不需要用原子操作
 	running = true;
-	cpr::Cookies cookies;
+	this->user_agent = cpr::UserAgent(_user_agent.toStdString());
+	this->main_cookies = cpr::Cookies();
 	for (auto&pair : _cookies.split(';'))
 	{
 		pair = pair.trimmed();
 		if (pair.size() > 1)
 		{
 			auto tmp = pair.split('=');
-			cookies[tmp[0].toStdString()] = tmp[1];
+			main_cookies[tmp[0].toStdString()] = tmp[1];
 		}
 	}
-
-	//DownloadProcess(pIDM, cookies, works);
-	std::thread thread(&DLSiteClient::DownloadProcess, this, cookies,cpr::UserAgent(user_agent.toStdString()),works);
+	//DownloadThread(pIDM, cookies, works);
+	std::thread thread(&DLSiteClient::DownloadThread, this,works);
 	thread.detach();
 }
 
 std::string DLSiteClient::format(const char* format, ...)
 {
-	char buff[1024] = { 0 };
+	char buff[1024*24] = { 0 };
 
 	va_list args;
 	va_start(args, format);
@@ -368,6 +488,6 @@ void DLSiteClient::StartRename(const QStringList& _files)
 		if(QDir(file).dirName().size()<id.size()+2)//原来已经有名字的不需要重命名
 			local_files.push_back(file);
 	}
-	std::thread thread(&DLSiteClient::RenameProcess,this,local_files);
+	std::thread thread(&DLSiteClient::RenameThread,this,local_files);
 	thread.detach();
 }

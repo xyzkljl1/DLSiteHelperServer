@@ -13,4 +13,9 @@ const QStringList DLConfig::local_tmp_dirs = {
 							QString::fromLocal8Bit("E:/IDMDownload/tmp/")
 							};
 
-const std::string DLConfig::DOWNLOAD_DIR = "E:/IDMDownload/AutoDownload/";
+const std::string DLConfig::REQUEST_PROXY = "127.0.0.1:8000";
+const std::string DLConfig::REQUEST_PROXY_TYPE = "https";
+
+const QString DLConfig::DOWNLOAD_DIR = "E:/IDMDownload/AutoDownload/";
+const QString DLConfig::ARIA2_PROXY = "127.0.0.1:8000";
+const std::string DLConfig::ARIA2_SECRET = "{1BF4EE95-7D91-4727-8934-BED4A305CFF0}";
