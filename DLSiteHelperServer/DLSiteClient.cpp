@@ -1,15 +1,17 @@
 #include "DLSiteClient.h"
 #include "DBProxyServer.h"
+#include <Windows.h>
+#include <tlhelp32.h>
+#include <tchar.h>
+#include <ShellAPI.h>
 #include <regex>
 #include <QDir>
 #include <QCoreApplication>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include "cpr/cpr.h"
-Q_DECLARE_METATYPE(DLSiteClient::StateMap);//沙雕宏认不出来逗号，所以必须起个别名
 DLSiteClient::DLSiteClient()
 {
-	qRegisterMetaType<DLSiteClient::StateMap>();
 	auto timer = new QTimer(this);
 	timer->setSingleShot(false);
 	timer->setInterval(1000 * 60 * 60);
@@ -23,7 +25,35 @@ DLSiteClient::~DLSiteClient()
 void DLSiteClient::CheckAria2Status(bool init) {
 	if (init)
 	{
-		//TODO:关闭之前的aria2
+		//关闭之前的aria2
+		TCHAR tszProcess[64] = { 0 };
+		lstrcpy(tszProcess, _T("aria2c(DLSite).exe"));
+		//查找进程
+		STARTUPINFO st;
+		PROCESS_INFORMATION pi;
+		PROCESSENTRY32 ps;
+		HANDLE hSnapshot;
+		memset(&st, 0, sizeof(STARTUPINFO));
+		st.cb = sizeof(STARTUPINFO);
+		memset(&ps, 0, sizeof(PROCESSENTRY32));
+		ps.dwSize = sizeof(PROCESSENTRY32);
+		memset(&pi, 0, sizeof(PROCESS_INFORMATION));
+		// 遍历进程 
+		hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+		if (hSnapshot != INVALID_HANDLE_VALUE && Process32First(hSnapshot, &ps))
+			do {
+				if (lstrcmp(ps.szExeFile, tszProcess) == 0)
+				{
+					HANDLE killHandle = OpenProcess(PROCESS_TERMINATE | PROCESS_QUERY_INFORMATION |   // Required by Alpha
+						PROCESS_CREATE_THREAD |   // For CreateRemoteThread
+						PROCESS_VM_OPERATION |   // For VirtualAllocEx/VirtualFreeEx
+						PROCESS_VM_WRITE,             // For WriteProcessMemory);
+						FALSE, ps.th32ProcessID);
+					if (killHandle)
+						TerminateProcess(killHandle, 0);
+				}
+			} while (Process32Next(hSnapshot, &ps));
+		CloseHandle(hSnapshot);
 	}
 	//file-allocation=falloc时需提权
 	if ((!aria2_process) || aria2_process->state() != QProcess::Running)
@@ -66,6 +96,8 @@ bool DLSiteClient::CheckTaskStatus(bool init)
 	session.SetUrl(cpr::Url{ QString("http://127.0.0.1:%1/jsonrpc").arg(DLConfig::ARIA2_PORT).toStdString()});
 
 	StateMap tmp_task_map;
+	float size_ct=.0f;
+	float total_size_ct = .0f;
 	//aria2任务计数
 	int unknown_ct = 0;
 	int update_ct = 0;
@@ -112,7 +144,9 @@ bool DLSiteClient::CheckTaskStatus(bool init)
 				}
 				auto result = doc.object().value("result").toObject();
 				QString task_status = result.value("status").toString();
-	//			printf("Status:%s %f\n", task_status.toStdString().c_str(), result.value("completedLength").toString().toInt() / 1024.0f);
+	//			printf("Status:%s %f\n", task_status.toStdString().c_str(), );
+				size_ct += result.value("completedLength").toString().toInt() / 1024.0f/1024.0f;
+				total_size_ct += result.value("totalLength").toString().toInt() / 1024.0f/1024.0f;
 				//active,waiting,paused,error,complete,removed
 				if (task_status == "error" || task_status == "paused" || task_status == "removed")
 					update_index.push_back(i);
@@ -186,7 +220,8 @@ bool DLSiteClient::CheckTaskStatus(bool init)
 		printf("Start Download %d/%d works\n",(int)tmp_task_map.size(), (int)task_map.size());
 		task_map = tmp_task_map;
 	}
-	printf("%d(Running)/%d(Updating)/%d(Done)/%d(Unknown) in %d files. %d/%d updated\n",running_ct,update_ct,complete_ct,unknown_ct,total_ct,update_success_ct,update_ct);
+	printf("%d(Running)/%d(Updating)/%d(Done)/%d(Unknown) in %d files. %d/%d updated. %6.2f/%6.2fMB downloaded.\n",
+		running_ct,update_ct,complete_ct,unknown_ct,total_ct,update_success_ct,update_ct,size_ct,total_size_ct);
 	return complete_ct == total_ct;
 }
 
@@ -256,14 +291,13 @@ void DLSiteClient::DownloadThread(QStringList works)
 	task_map.clear();
 	std::map<std::string, std::future<State>> futures;
 	QStringList tmp;
-//	works = QStringList{ "RJ317750" };
 	for (const auto& id : works)
 		futures[id.toStdString()] = std::async(&TryDownloadWork, id.toStdString(), main_cookies,user_agent,false);
 	for (auto& pair : futures)//应该用whenall,但是并没有
 		task_map[pair.first.c_str()] = pair.second.get();
 	CheckTaskStatus(true);
 	do
-		Sleep(1000 * 60*30);
+		Sleep(1000 * 60 * 15);
 	while (!CheckTaskStatus(false));
 	running = false;
 }

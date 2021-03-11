@@ -58,7 +58,8 @@
       <AdditionalOptions>/NODEFAULTLIB:library %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <PostBuildEvent>
-      <Command>echo D|xcopy "$(SolutionDir)aria2" "$(TargetDir)aria2" /y /C</Command>
+      <Command>echo D|xcopy "$(SolutionDir)aria2" "$(TargetDir)aria2" /y /C
+echo D|xcopy "$(SolutionDir)config.json" "$(TargetDir)" /y /C</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -67,7 +68,8 @@
       <AdditionalOptions>/NODEFAULTLIB:library %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <PostBuildEvent>
-      <Command>echo D|xcopy "$(SolutionDir)aria2" "$(TargetDir)aria2" /y /C</Command>
+      <Command>echo D|xcopy "$(SolutionDir)aria2" "$(TargetDir)aria2" /y /C
+echo D|xcopy "$(SolutionDir)config.json" "$(TargetDir)" /y /C</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="QtSettings">

@@ -3,6 +3,9 @@
 用于提供插件和数据库的交互、同步已下载商品列表、批量下载、批量重命名  
 支持64位Windows  
 
+Server side for [DLSiteHelper](https://github.com/xyzkljl1/DLSiteHelper).Provides database operation、batch downloading、batch renaming.  
+Only support Windows x64
+
 
 ## Build and Run  
 安装Qt5.14、VS2017、mysql server(>=8.0)  
@@ -10,8 +13,17 @@
 在本地指定端口(默认4321)运行mysql服务端，使用build_database.sql创建数据库  
 于本地指定端口(默认8000)运行代理  
 在Chrome上登录DLSite并运行DLSiteHelper插件  
-于DLConfig.h/cpp配置下载/存储目录和端口  
+于config.json配置下载/存储目录和端口  
 确保程序要使用的端口(默认4567/4319)空闲  
+
+
+Install Qt5.14、VS2017、mysql server(>=8.0)  
+Copy dll files in openssl/tufao/cpr/mysql directory and Qt installation dir to work directory  
+Run mysql server in local port(4321 by default)  
+(When neccessary)Run proxy in local port(8000 by default)  
+Run DLSiteHelper in chrome And login into DLSite  
+Config directory in config.json 
+Make sure other local port(4567/4319 by default) is available  
 
   
 ## Reference  
@@ -21,7 +33,7 @@
 
 ## Other 
 
-在aria2/aria2.conf里设置file-allocation=falloc时需以管理员权限运行以获得最佳性能(实际没什么区别)  
+在aria2/aria2.conf里设置file-allocation=falloc时需以管理员权限运行以获得最佳性能(实际没多大区别)  
 
 解决 浏览DLSite时部分请求过慢导致网页一直转圈圈无法触发DLSiteHelper的注入脚本的问题:   
 目前不知道怎么屏蔽垃圾域名,暂定用改host和代理的方式缓解  
