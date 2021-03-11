@@ -476,7 +476,10 @@ DLSiteClient::WorkType DLSiteClient::GetWorkTypeFromWeb(const std::string& page,
 void DLSiteClient::StartDownload(const QByteArray& _cookies, const QByteArray& _user_agent, const QStringList& works)
 {
 	if (this->running)
+	{
+		printf("Busy. Reject Download Request\n");
 		return;
+	}
 	//因为都是在主线程运行，所以这里不需要用原子操作
 	running = true;
 	this->user_agent = cpr::UserAgent(_user_agent.toStdString());
