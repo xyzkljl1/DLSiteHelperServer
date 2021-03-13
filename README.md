@@ -1,6 +1,6 @@
 # DLSiteHelperServer  
 [DLSiteHelper](https://github.com/xyzkljl1/DLSiteHelper)的本地Server,需要使用本地的mysql数据库  
-用于提供插件和数据库的交互、同步已下载商品列表、批量下载、批量重命名  
+用于提供插件和数据库的交互、同步已下载商品列表、批量下载解压、批量重命名  
 支持64位Windows  
 
 Server side for [DLSiteHelper](https://github.com/xyzkljl1/DLSiteHelper).Provides database operation、batch downloading、batch renaming.  
@@ -52,5 +52,3 @@ idsync.rlcdn.com 走专用代理(垃圾请求)
 
 修复有时页面加载完，但插件没有去除已阅作品的bug  
 修复购物车页面和添加至购物车的弹出窗口下方的列表未去除已阅作品的bug  
-
-自动解压并转码

@@ -1,4 +1,5 @@
 {
+  //local_dirs里以RJ号开头的文件夹视作已下载的商品
   "local_dirs": [
     "G:/ASMR_archive/",
     "G:/ASMR_cant_archive/",
@@ -8,15 +9,22 @@
     "G:/DL_Game/",
     "E:/IDMDownload/avater/"
   ],
+  //local_tmp_dirs里以RJ号开头的文件夹不视作已下载的商品，但也会被重命名操作重命名
   "local_tmp_dirs": [
     "E:/IDMDownload/tmp/"
   ],
+  //下载的商品存放在DOWNLOAD_DIR中，每次下载前都会清空
   "DOWNLOAD_DIR": "E:/IDMDownload/AutoDownload/",
+  //服务端监听端口，用于接收插件请求
   "SERVER_PORT": 4567,
+  //数据库监听端口
   "DATABASE_PORT": 4321,
+  //获取下载链接的代理
   "REQUEST_PROXY": "127.0.0.1:8000",
   "REQUEST_PROXY_TYPE": "https",
+  //aria2监听端口、代理
   "ARIA2_PORT": 4319,
   "ARIA2_PROXY": "127.0.0.1:8000",
+  //aria2的secret,应当与aria2.conf一致
   "ARIA2_SECRET": "{1BF4EE95-7D91-4727-8934-BED4A305CFF0}"
 }
