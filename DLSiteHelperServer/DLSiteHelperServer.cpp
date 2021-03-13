@@ -1,4 +1,4 @@
-#include "DBProxyServer.h"
+#include "DLSiteHelperServer.h"
 #include "DLSiteClient.h"
 #include <QRegExp>
 #include <QDir>
@@ -11,28 +11,28 @@
 const int SQL_LENGTH_LIMIT = 10000;
 #define WORK_NAME_EXP "[RVBJ]{2}[0-9]{3,6}"
 
-DBProxyServer::DBProxyServer(QObject* parent):Tufao::HttpServer(parent)
+DLSiteHelperServer::DLSiteHelperServer(QObject* parent):Tufao::HttpServer(parent)
 {
 	//通过HKEY_LOCAL_MACHINE/SYSTEM/CurrentControlSet/Services/Tcpip/Parameters/ReservedPorts项将端口设为保留
 	listen(QHostAddress::Any, DLConfig::SERVER_PORT);
-	connect(this, &DBProxyServer::requestReady, this, &DBProxyServer::HandleRequest);
+	connect(this, &DLSiteHelperServer::requestReady, this, &DLSiteHelperServer::HandleRequest);
 	SyncLocalFile();
 	daily_timer.setInterval(86400*1000);
 	daily_timer.start();
 	//每天更新本地文件
-	connect(&daily_timer, &QTimer::timeout, this, &DBProxyServer::SyncLocalFile);
+	connect(&daily_timer, &QTimer::timeout, this, &DLSiteHelperServer::SyncLocalFile);
 }
 
-DBProxyServer::~DBProxyServer()
+DLSiteHelperServer::~DLSiteHelperServer()
 {
 }
 
-QRegExp DBProxyServer::GetWorkNameExp()
+QRegExp DLSiteHelperServer::GetWorkNameExp()
 {
 	return QRegExp(WORK_NAME_EXP);
 }
 
-void DBProxyServer::HandleRequest(Tufao::HttpServerRequest & request, Tufao::HttpServerResponse & response)
+void DLSiteHelperServer::HandleRequest(Tufao::HttpServerRequest & request, Tufao::HttpServerResponse & response)
 {
 	QString request_target = request.url().toString();
 	QRegExp reg_mark_eliminated("(/\?markEliminated)(" WORK_NAME_EXP ")");
@@ -73,7 +73,7 @@ void DBProxyServer::HandleRequest(Tufao::HttpServerRequest & request, Tufao::Htt
 	{
 		if (!reg_mark_eliminated.cap(2).isEmpty())
 		{
-			std::string id = reg_mark_eliminated.cap(2).toLocal8Bit().toStdString();
+			std::string id = q2s(reg_mark_eliminated.cap(2));
 			DataBase database;
 			std::string  cmd = "INSERT IGNORE INTO works(id) VALUES(\"" + id + "\");"
 				"UPDATE works SET eliminated = 1 WHERE id = \"" + id + "\"; ";
@@ -94,7 +94,7 @@ void DBProxyServer::HandleRequest(Tufao::HttpServerRequest & request, Tufao::Htt
 	{
 		if (!reg_mark_special_eliminated.cap(2).isEmpty())
 		{
-			std::string id = reg_mark_special_eliminated.cap(2).toLocal8Bit().toStdString();
+			std::string id = q2s(reg_mark_special_eliminated.cap(2));
 			DataBase database;
 			std::string  cmd = "INSERT IGNORE INTO works(id) VALUES(\"" + id + "\");"
 				"UPDATE works SET specialEliminated = 1 WHERE id = \"" + id + "\"; ";
@@ -113,8 +113,8 @@ void DBProxyServer::HandleRequest(Tufao::HttpServerRequest & request, Tufao::Htt
 	}
 	else if (reg_mark_overlap.indexIn(request_target) > 0)
 	{
-		std::string main_id = reg_mark_overlap.cap(2).toLocal8Bit().toStdString();
-		std::string sub_id = reg_mark_overlap.cap(3).toLocal8Bit().toStdString();
+		std::string main_id = q2s(reg_mark_overlap.cap(2));
+		std::string sub_id = q2s(reg_mark_overlap.cap(3));
 		bool duplex = reg_mark_overlap.cap(4).toInt();
 		DataBase database;
 		std::string cmd = "INSERT IGNORE INTO works(id) VALUES(\"" + main_id + "\");"
@@ -135,14 +135,14 @@ void DBProxyServer::HandleRequest(Tufao::HttpServerRequest & request, Tufao::Htt
 	}
 }
 
-void DBProxyServer::ReplyText(Tufao::HttpServerResponse & response,const Tufao::HttpResponseStatus&status, const QString & message)
+void DLSiteHelperServer::ReplyText(Tufao::HttpServerResponse & response,const Tufao::HttpResponseStatus&status, const QString & message)
 {
 	response.writeHead(Tufao::HttpResponseStatus::OK);
 	response.headers().replace("Content-Type", "text/plain");
 	response.end(message.toLocal8Bit());
 }
 
-QString DBProxyServer::GetAllOverlapWork()
+QString DLSiteHelperServer::GetAllOverlapWork()
 {
 	DataBase database;
 	std::map<std::string,std::set<std::string>> overlap_work;
@@ -168,17 +168,17 @@ QString DBProxyServer::GetAllOverlapWork()
 	if(ret.size()>2)//去掉最后一个逗号
 		ret.pop_back();
 	ret += "}";
-	return QString::fromLocal8Bit(ret.c_str());
+	return s2q(ret);
 }
 
-QString DBProxyServer::UpdateBoughtItems(const QByteArray & data)
+QString DLSiteHelperServer::UpdateBoughtItems(const QByteArray & data)
 {
 	DataBase database;
 	QRegExp reg(WORK_NAME_EXP);
 	std::string	cmd;
 	for (const auto& byte : data.split(' '))
 	{
-		std::string id = QString(byte).toLocal8Bit().toStdString();
+		std::string id = q2s(byte);
 		if (reg.exactMatch(QString(byte)))
 			cmd += "INSERT IGNORE INTO works(id) VALUES(\"" + id + "\");"
 			"UPDATE works SET bought = 1 WHERE id = \"" + id + "\"; ";
@@ -202,7 +202,7 @@ QString DBProxyServer::UpdateBoughtItems(const QByteArray & data)
 	return "Sucess";
 }
 
-QString DBProxyServer::GetAllInvalidWork()
+QString DLSiteHelperServer::GetAllInvalidWork()
 {
 	std::set<std::string> invalid_work;
 	//覆盖的作品全部invalid的作品未必是invalid，因为可能有额外的内容
@@ -259,10 +259,10 @@ QString DBProxyServer::GetAllInvalidWork()
 	std::string ret;
 	for(const auto& id:invalid_work)
 		ret += (ret.empty() ? "" : " ") + id;
-	return QString::fromLocal8Bit(ret.c_str());
+	return s2q(ret);
 }
 
-void DBProxyServer::SyncLocalFile()
+void DLSiteHelperServer::SyncLocalFile()
 {
 	QStringList local_files;
 	for (auto&dir : DLConfig::local_dirs)
@@ -275,7 +275,7 @@ void DBProxyServer::SyncLocalFile()
 	{
 		int pos = reg.indexIn(dir);
 		if (pos > -1) {
-			std::string work_name = reg.cap(0).toLocal8Bit().toStdString();
+			std::string work_name = q2s(reg.cap(0));
 			cmd +="INSERT IGNORE INTO works(id) VALUES(\""+work_name+"\");"
 				"UPDATE works SET downloaded = 1 WHERE id = \""+work_name+"\"; ";
 			ct.insert(work_name);
@@ -300,7 +300,7 @@ void DBProxyServer::SyncLocalFile()
 	printf("Sync from local %zd works->%d\n", ct.size(),ret);
 }
 
-void DBProxyServer::DownloadAll(const QByteArray&cookie, const QByteArray& user_agent)
+void DLSiteHelperServer::DownloadAll(const QByteArray&cookie, const QByteArray& user_agent)
 {
 	QStringList works;
 	{
@@ -317,7 +317,7 @@ void DBProxyServer::DownloadAll(const QByteArray&cookie, const QByteArray& user_
 	client.StartDownload(cookie,user_agent,works);
 }
 
-void DBProxyServer::RenameLocal()
+void DLSiteHelperServer::RenameLocal()
 {
 	QStringList ret;
 	QStringList local_files;

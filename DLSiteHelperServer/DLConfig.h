@@ -3,6 +3,9 @@
 class DLConfig
 {
 public:
+	static bool IDM_Mode;
+	static bool ARIA2_Mode;
+
 	//存储目录，位于local_dirs的文件夹视作已下载
 	static QStringList local_dirs;
 	//位于local_tmp_dirs的文件仅用于重命名

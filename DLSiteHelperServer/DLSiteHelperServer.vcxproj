@@ -43,14 +43,14 @@
     <Import Project="$(QtMsBuild)\qt_defaults.props" />
   </ImportGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
-    <IncludePath>$(SolutionDir)mysql\include;$(IncludePath);$(SolutionDir)cpr\include;$(SolutionDir)tufao\include</IncludePath>
-    <LibraryPath>$(SolutionDir)mysql\lib;$(SolutionDir)cpr\lib\$(Configuration);$(SolutionDir)tufao\lib;$(LibraryPath)</LibraryPath>
-    <ReferencePath>$(SolutionDir)IDMAPI;$(ReferencePath)</ReferencePath>
+    <IncludePath>$(SolutionDir)dependencies\mysql\include;$(IncludePath);$(SolutionDir)dependencies\cpr\include;$(SolutionDir)dependencies\tufao\include;$(SolutionDir)dependencies\IDM</IncludePath>
+    <LibraryPath>$(SolutionDir)dependencies\mysql\lib;$(SolutionDir)dependencies\cpr\lib\$(Configuration);$(SolutionDir)dependencies\tufao\lib;$(SolutionDir)dependencies\IDM;$(LibraryPath)</LibraryPath>
+    <ReferencePath>$(SolutionDir)dependencies\IDM;$(ReferencePath)</ReferencePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
-    <IncludePath>$(SolutionDir)mysql\include;$(IncludePath);$(SolutionDir)cpr\include;$(SolutionDir)tufao\include</IncludePath>
-    <LibraryPath>$(SolutionDir)mysql\lib;$(SolutionDir)cpr\lib\$(Configuration);$(SolutionDir)tufao\lib;$(LibraryPath)</LibraryPath>
-    <ReferencePath>$(SolutionDir)IDMAPI;$(ReferencePath)</ReferencePath>
+    <IncludePath>$(SolutionDir)dependencies\mysql\include;$(IncludePath);$(SolutionDir)dependencies\cpr\include;$(SolutionDir)dependencies\tufao\include;$(SolutionDir)dependencies\IDM</IncludePath>
+    <LibraryPath>$(SolutionDir)dependencies\mysql\lib;$(SolutionDir)dependencies\cpr\lib\$(Configuration);$(SolutionDir)dependencies\tufao\lib;$(SolutionDir)dependencies\IDM;$(LibraryPath)</LibraryPath>
+    <ReferencePath>$(SolutionDir)dependencies\IDM;$(ReferencePath)</ReferencePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Link>
@@ -58,7 +58,7 @@
       <AdditionalOptions>/NODEFAULTLIB:library %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <PostBuildEvent>
-      <Command>echo D|xcopy "$(SolutionDir)aria2" "$(TargetDir)aria2" /y /C
+      <Command>echo D|xcopy "$(SolutionDir)dependencies\aria2" "$(TargetDir)aria2" /y /C
 echo D|xcopy "$(SolutionDir)config.json" "$(TargetDir)" /y /C</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -68,7 +68,7 @@ echo D|xcopy "$(SolutionDir)config.json" "$(TargetDir)" /y /C</Command>
       <AdditionalOptions>/NODEFAULTLIB:library %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <PostBuildEvent>
-      <Command>echo D|xcopy "$(SolutionDir)aria2" "$(TargetDir)aria2" /y /C
+      <Command>echo D|xcopy "$(SolutionDir)dependencies\aria2" "$(TargetDir)aria2" /y /C
 echo D|xcopy "$(SolutionDir)config.json" "$(TargetDir)" /y /C</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -112,21 +112,28 @@ echo D|xcopy "$(SolutionDir)config.json" "$(TargetDir)" /y /C</Command>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Aria2Downloader.cpp" />
+    <ClCompile Include="BaseDownloader.cpp" />
     <ClCompile Include="DLConfig.cpp" />
     <ClCompile Include="DataBase.cpp" />
-    <ClCompile Include="DBProxyServer.cpp" />
+    <ClCompile Include="DLSiteHelperServer.cpp" />
     <ClCompile Include="DLSiteClient.cpp" />
+    <ClCompile Include="IDMDownloader.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MyFakeWindow.cpp" />
+    <ClCompile Include="Util.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Aria2Downloader.h" />
+    <ClInclude Include="Util.h" />
+    <QtMoc Include="BaseDownloader.h" />
     <ClInclude Include="DLConfig.h" />
     <ClInclude Include="DataBase.h" />
+    <ClInclude Include="IDMDownloader.h" />
     <ClInclude Include="resource1.h" />
     <QtMoc Include="MyFakeWindow.h" />
-    <ClInclude Include="resource.h" />
     <QtMoc Include="DLSiteClient.h" />
-    <QtMoc Include="DBProxyServer.h" />
+    <QtMoc Include="DLSiteHelperServer.h" />
   </ItemGroup>
   <ItemGroup>
     <QtRcc Include="Resource.qrc" />

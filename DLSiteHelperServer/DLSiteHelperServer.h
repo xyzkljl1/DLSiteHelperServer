@@ -8,12 +8,12 @@
 #include "Tufao/HttpServerResponse"
 #include "Tufao/Headers"
 
-class DBProxyServer:public Tufao::HttpServer
+class DLSiteHelperServer:public Tufao::HttpServer
 {
 	Q_OBJECT
 public:
-	DBProxyServer(QObject* parent);
-	~DBProxyServer();
+	DLSiteHelperServer(QObject* parent);
+	~DLSiteHelperServer();
 	static QRegExp GetWorkNameExp();
 protected:
 	void HandleRequest(Tufao::HttpServerRequest &request, Tufao::HttpServerResponse &response);

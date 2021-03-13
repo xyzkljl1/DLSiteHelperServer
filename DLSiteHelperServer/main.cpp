@@ -1,11 +1,11 @@
 #include <QApplication>
 #include "MyFakeWindow.h"
-#include "DBProxyServer.h"
+#include "DLSiteHelperServer.h"
 int main(int argc, char *argv[])
 {
 	QApplication a(argc, argv);
 	DLConfig::LoadFromFile(QApplication::applicationDirPath()+"/config.json");
-	DBProxyServer server(&a);
+	DLSiteHelperServer server(&a);
 	std::set<std::string> args;
 	for (int i = 1; i < argc; ++i)
 		args.insert(argv[i]);

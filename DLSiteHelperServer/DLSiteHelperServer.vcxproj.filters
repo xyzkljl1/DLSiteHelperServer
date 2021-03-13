@@ -26,9 +26,6 @@
     <ClCompile Include="DataBase.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="DBProxyServer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="DLSiteClient.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -38,12 +35,24 @@
     <ClCompile Include="DLConfig.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="IDMDownloader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Aria2Downloader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DLSiteHelperServer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="BaseDownloader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Util.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DataBase.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="resource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="resource1.h">
@@ -52,15 +61,27 @@
     <ClInclude Include="DLConfig.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="IDMDownloader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Aria2Downloader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Util.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <QtMoc Include="DBProxyServer.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
     <QtMoc Include="DLSiteClient.h">
       <Filter>Header Files</Filter>
     </QtMoc>
     <QtMoc Include="MyFakeWindow.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="DLSiteHelperServer.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="BaseDownloader.h">
       <Filter>Header Files</Filter>
     </QtMoc>
   </ItemGroup>
