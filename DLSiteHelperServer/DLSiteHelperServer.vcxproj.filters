@@ -35,9 +35,6 @@
     <ClCompile Include="DLConfig.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="IDMDownloader.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Aria2Downloader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -61,12 +58,6 @@
     <ClInclude Include="DLConfig.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="IDMDownloader.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Aria2Downloader.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Util.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -82,6 +73,9 @@
       <Filter>Header Files</Filter>
     </QtMoc>
     <QtMoc Include="BaseDownloader.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="Aria2Downloader.h">
       <Filter>Header Files</Filter>
     </QtMoc>
   </ItemGroup>

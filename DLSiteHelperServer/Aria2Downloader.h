@@ -1,8 +1,10 @@
 #pragma once
 #include "BaseDownloader.h"
 class QProcess;
+//线程不安全
 class Aria2Downloader:public BaseDownloader
 {
+	Q_OBJECT
 public:
 	struct Aria2Task :public Task {
 		std::vector<bool>        aria2_success;

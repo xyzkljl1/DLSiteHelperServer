@@ -7,7 +7,7 @@ class BaseDownloader:public QObject
 public:
 	virtual bool StartDownload(const std::vector<Task>& _tasks,const cpr::Cookies& _cookie,const cpr::UserAgent& _user_agent)=0;
 signals:
-	void signalDownloadDone();
+	void signalDownloadDone(std::vector<Task> tasks);
 	void signalDownloadAborted();
 protected:
 	bool CheckFiles(const std::vector<QString>& files);

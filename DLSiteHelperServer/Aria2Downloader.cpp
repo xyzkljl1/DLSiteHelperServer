@@ -44,7 +44,7 @@ bool Aria2Downloader::StartDownload(const std::vector<Task>& _tasks, const cpr::
 void Aria2Downloader::CheckThread()
 {
 	do {
-		Sleep(1000 * 30);
+		Sleep(1000 * 60 * 30);
 	} while (!CheckTaskStatus(false));
 	//Aria2会先在本地创建目标文件，所以要先检查任务状态再检查本地文件
 	std::vector<QString> files;
@@ -64,8 +64,11 @@ void Aria2Downloader::CheckThread()
 		emit signalDownloadAborted();
 		return;
 	}
+	std::vector<Task> tmp;
+	for (auto task : task_list)
+		tmp.push_back(task);
 	running = false;
-	emit signalDownloadDone();
+	emit signalDownloadDone(tmp);
 }
 void Aria2Downloader::CheckAria2Status(bool init) {
 	if (init)

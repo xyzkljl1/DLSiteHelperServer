@@ -27,6 +27,6 @@ struct Task {
 	QString work_name;//×÷Æ·Ãû
 	bool ready = false;
 	std::string cookie;
-	std::string GetDownloadDir();
-	std::string GetDownloadPath(int i);
+	std::string GetDownloadDir() const;
+	std::string GetDownloadPath(int i) const;
 };

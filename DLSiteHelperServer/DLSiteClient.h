@@ -27,7 +27,7 @@ protected:
 	static WorkType GetWorkTypeFromWeb(const std::string& page, const std::string&id);	
 	static QString unicodeToString(const QString& str);
 
-	void OnDownloadDone();
+	void OnDownloadDone(std::vector<Task> task_list);
 	void OnDownloadAborted();
 
 	std::atomic<bool> running = false;//不管执行哪个任务都用一个running，因为有共用的成员

@@ -25,7 +25,7 @@ QString s2q(const std::string& str)
 {
 	return QString::fromLocal8Bit(str.c_str());
 }
-std::string Task::GetDownloadDir()
+std::string Task::GetDownloadDir() const
 {
 	std::string path=DLConfig::DOWNLOAD_DIR.toLocal8Bit().toStdString();
 	switch (type) {
@@ -44,7 +44,7 @@ std::string Task::GetDownloadDir()
 		path += "other/";
 	return path;
 }
-std::string Task::GetDownloadPath(int i)
+std::string Task::GetDownloadPath(int i) const
 {
 	return GetDownloadDir() + file_names[i];
 }

@@ -7,11 +7,14 @@
 #include <QJsonObject>
 #include "cpr/cpr.h"
 #include "Aria2Downloader.h"
-#include "IDMDownloader.h"
+#include <QMetaType>
+Q_DECLARE_METATYPE(std::vector<Task>);
+
 DLSiteClient::DLSiteClient()
 {
-	if (DLConfig::IDM_Mode)
-		downloader = new IDMDownloader();
+	qRegisterMetaType<std::vector<Task>>();
+	if (DLConfig::ARIA2_Mode)
+		downloader = new Aria2Downloader();
 	else
 		downloader = new Aria2Downloader();
 	connect(downloader, &BaseDownloader::signalDownloadAborted, this, &DLSiteClient::OnDownloadAborted);
@@ -33,7 +36,7 @@ QString DLSiteClient::unicodeToString(const QString& str)
 	return result;
 }
 
-void DLSiteClient::OnDownloadDone()
+void DLSiteClient::OnDownloadDone(std::vector<Task> task_list)
 {
 	if (!running)
 		return;

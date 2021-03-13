@@ -43,14 +43,14 @@
     <Import Project="$(QtMsBuild)\qt_defaults.props" />
   </ImportGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
-    <IncludePath>$(SolutionDir)dependencies\mysql\include;$(IncludePath);$(SolutionDir)dependencies\cpr\include;$(SolutionDir)dependencies\tufao\include;$(SolutionDir)dependencies\IDM</IncludePath>
-    <LibraryPath>$(SolutionDir)dependencies\mysql\lib;$(SolutionDir)dependencies\cpr\lib\$(Configuration);$(SolutionDir)dependencies\tufao\lib;$(SolutionDir)dependencies\IDM;$(LibraryPath)</LibraryPath>
-    <ReferencePath>$(SolutionDir)dependencies\IDM;$(ReferencePath)</ReferencePath>
+    <IncludePath>$(SolutionDir)dependencies\mysql\include;$(IncludePath);$(SolutionDir)dependencies\cpr\include;$(SolutionDir)dependencies\tufao\include</IncludePath>
+    <LibraryPath>$(SolutionDir)dependencies\mysql\lib;$(SolutionDir)dependencies\cpr\lib\$(Configuration);$(SolutionDir)dependencies\tufao\lib;$(LibraryPath)</LibraryPath>
+    <ReferencePath>$(ReferencePath)</ReferencePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
-    <IncludePath>$(SolutionDir)dependencies\mysql\include;$(IncludePath);$(SolutionDir)dependencies\cpr\include;$(SolutionDir)dependencies\tufao\include;$(SolutionDir)dependencies\IDM</IncludePath>
-    <LibraryPath>$(SolutionDir)dependencies\mysql\lib;$(SolutionDir)dependencies\cpr\lib\$(Configuration);$(SolutionDir)dependencies\tufao\lib;$(SolutionDir)dependencies\IDM;$(LibraryPath)</LibraryPath>
-    <ReferencePath>$(SolutionDir)dependencies\IDM;$(ReferencePath)</ReferencePath>
+    <IncludePath>$(SolutionDir)dependencies\mysql\include;$(IncludePath);$(SolutionDir)dependencies\cpr\include;$(SolutionDir)dependencies\tufao\include</IncludePath>
+    <LibraryPath>$(SolutionDir)dependencies\mysql\lib;$(SolutionDir)dependencies\cpr\lib\$(Configuration);$(SolutionDir)dependencies\tufao\lib;$(LibraryPath)</LibraryPath>
+    <ReferencePath>$(ReferencePath)</ReferencePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Link>
@@ -118,18 +118,16 @@ echo D|xcopy "$(SolutionDir)config.json" "$(TargetDir)" /y /C</Command>
     <ClCompile Include="DataBase.cpp" />
     <ClCompile Include="DLSiteHelperServer.cpp" />
     <ClCompile Include="DLSiteClient.cpp" />
-    <ClCompile Include="IDMDownloader.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MyFakeWindow.cpp" />
     <ClCompile Include="Util.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Aria2Downloader.h" />
+    <QtMoc Include="Aria2Downloader.h" />
     <ClInclude Include="Util.h" />
     <QtMoc Include="BaseDownloader.h" />
     <ClInclude Include="DLConfig.h" />
     <ClInclude Include="DataBase.h" />
-    <ClInclude Include="IDMDownloader.h" />
     <ClInclude Include="resource1.h" />
     <QtMoc Include="MyFakeWindow.h" />
     <QtMoc Include="DLSiteClient.h" />

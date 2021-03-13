@@ -13,7 +13,6 @@ std::string DLConfig::ARIA2_SECRET="";
 int DLConfig::SERVER_PORT=4567;
 int DLConfig::DATABASE_PORT=4321;
 int DLConfig::ARIA2_PORT=4319;
-bool DLConfig::IDM_Mode=false;
 bool DLConfig::ARIA2_Mode=true;
 
 bool DLConfig::LoadFromFile(QString file_name)
@@ -75,19 +74,13 @@ bool DLConfig::LoadFromFile(QString file_name)
 	key = "DATABASE_PORT";
 	if (root.contains(key))
 		DLConfig::DATABASE_PORT = root.value(key).toInt();
-	key = "DOWNLOADER";
+/*	key = "DOWNLOADER";
 	if (root.contains(key) && root.value(key).isString())
 	{
 		if (root.value(key).toString().toLower() == "aria2"|| root.value(key).toString().toLower() == "aria2c"|| root.value(key).toString().toLower() == "aria")
 		{
 			ARIA2_Mode = true;
-			IDM_Mode = false;
 		}
-		else if (root.value(key).toString().toLower() == "idm"|| root.value(key).toString().toLower() == "internetdownloadmanager"|| root.value(key).toString().toLower() == "internet download manager")
-		{			
-			ARIA2_Mode = false;
-			IDM_Mode = true;
-		}
-	}
+	}*/
 	return true;
 }
