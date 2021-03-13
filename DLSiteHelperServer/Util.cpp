@@ -48,3 +48,16 @@ std::string Task::GetDownloadPath(int i) const
 {
 	return GetDownloadDir() + file_names[i];
 }
+std::string Task::GetExtractPath() const
+{
+	std::string path = DLConfig::DOWNLOAD_DIR.toLocal8Bit().toStdString()+"Extract/";
+	switch (type) {
+	case WorkType::AUDIO:path += "ASMR/"; break;
+	case WorkType::VIDEO:path += "Video/"; break;
+	case WorkType::PICTURE:path += "CG/"; break;
+	case WorkType::PROGRAM:path += "Game/"; break;
+	default:path += "Default/";
+	}
+	path += id;
+	return path;
+}

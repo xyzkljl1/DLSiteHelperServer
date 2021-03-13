@@ -29,4 +29,5 @@ struct Task {
 	std::string cookie;
 	std::string GetDownloadDir() const;
 	std::string GetDownloadPath(int i) const;
+	std::string GetExtractPath() const;
 };
