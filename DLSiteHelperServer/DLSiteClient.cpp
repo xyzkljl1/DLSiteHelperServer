@@ -8,17 +8,17 @@
 #include "cpr/cpr.h"
 #include "Aria2Downloader.h"
 #include <QMetaType>
-Q_DECLARE_METATYPE(std::vector<Task>);
-
+Q_DECLARE_METATYPE(std::vector<Task>)
 DLSiteClient::DLSiteClient()
 {
 	qRegisterMetaType<std::vector<Task>>();
-	if (DLConfig::ARIA2_Mode)
+	if (DLConfig::ARIA2_Mode)//本来是想做两个Downloader的，但是后来发现IDM不太行
 		downloader = new Aria2Downloader();
 	else
 		downloader = new Aria2Downloader();
 	connect(downloader, &BaseDownloader::signalDownloadAborted, this, &DLSiteClient::OnDownloadAborted);
 	connect(downloader, &BaseDownloader::signalDownloadDone, this, &DLSiteClient::OnDownloadDone);
+	//Extract("E:/IDMDownload/AutoDownload/CG/zip/RJ218142.zip","E:/IDMDownload/AutoDownload/CG/zip/1");
 }
 
 DLSiteClient::~DLSiteClient()
@@ -36,11 +36,75 @@ QString DLSiteClient::unicodeToString(const QString& str)
 	return result;
 }
 
+bool DLSiteClient::Extract(const QString & file_name, const QString & dir)
+{
+	auto process = new QProcess();
+	auto x = QCoreApplication::applicationDirPath() + "/7z";
+	process->setWorkingDirectory(QCoreApplication::applicationDirPath()+"/7z");
+	process->setReadChannelMode(QProcess::ProcessChannelMode::MergedChannels);
+	process->setProcessEnvironment(QProcessEnvironment::systemEnvironment());
+#ifdef _DEBUG
+	/*process->setCreateProcessArgumentsModifier(
+		[](QProcess::CreateProcessArguments * args){
+		args->flags |= CREATE_NEW_CONSOLE;
+		args->startupInfo->dwFlags &= ~STARTF_USESTDHANDLES;
+	});*/
+#endif
+	process->start(
+		//"7z.exe",
+		"pwd",
+		{/*"e",//解压
+		file_name,
+		"-o\""+dir+"\"",//输出
+		"-aoa",//覆盖
+		"sccWIN"//输出字符集
+		*/
+		}, QIODevice::ReadOnly);
+	connect(process, &QProcess::readyRead, this,std::bind( &DLSiteClient::OnReadyRead,this,process));
+	process->waitForStarted();
+//	process->waitForReadyRead();
+//	auto response=process->readAll();
+//	printf("%s\n", response.toStdString().c_str());
+	return true;
+}
+
+void DLSiteClient::OnReadyRead(QProcess *process)
+{
+	auto response = process->readAll();
+	printf("%s\n", response.toStdString().c_str());
+}
+
 void DLSiteClient::OnDownloadDone(std::vector<Task> task_list)
 {
 	if (!running)
 		return;
-	printf("Download Done\n");
+	printf("Download Done,Begin extract\n");
+	"Everything is Ok";
+	int extract_ct=0;
+	for (auto&task : task_list)//暂时只见到过单个zip和分段rar两种格式
+		if (task.download_ext.count("zip"))
+		{
+			if (task.download_ext.size() != 1 || task.urls.size() != 1)
+			{
+				printf("Extract Error On %s\n",task.id.c_str());
+				continue;
+			}
+
+		}
+		else if (task.download_ext.count("rar"))
+		{
+			if (task.download_ext.size() != 2 || task.urls.size() <= 1|| !task.download_ext.count("exe"))
+			{
+				printf("Extract Error On %s\n", task.id.c_str());
+				continue;
+			}
+		}
+		else
+		{
+			printf("Unknown File Format On %s\n", task.id.c_str());
+			continue;
+		}
+	printf("%d/%d works Extracted\n",extract_ct,task_list);
 	running = false;
 }
 
@@ -103,8 +167,7 @@ void DLSiteClient::RenameThread(QStringList local_files)
 }
 void DLSiteClient::DownloadThread(QStringList works,cpr::Cookies cookie,cpr::UserAgent user_agent)
 {
-	works = QStringList{ works[1] };
-
+//	works = QStringList{ works[1] };
 	std::vector<Task> task_list;
 	std::map<std::string, std::future<Task>> futures;
 	QStringList tmp;

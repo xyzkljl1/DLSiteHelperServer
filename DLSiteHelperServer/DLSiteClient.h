@@ -26,6 +26,8 @@ protected:
 	static bool RenameFile(const QString & file, const QString & id, const QString & work_name);
 	static WorkType GetWorkTypeFromWeb(const std::string& page, const std::string&id);	
 	static QString unicodeToString(const QString& str);
+	bool Extract(const QString& file_name,const QString& dir);
+	void OnReadyRead(QProcess*);
 
 	void OnDownloadDone(std::vector<Task> task_list);
 	void OnDownloadAborted();

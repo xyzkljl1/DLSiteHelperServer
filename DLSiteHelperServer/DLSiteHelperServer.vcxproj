@@ -59,6 +59,7 @@
     </Link>
     <PostBuildEvent>
       <Command>echo D|xcopy "$(SolutionDir)dependencies\aria2" "$(TargetDir)aria2" /y /C
+echo D|xcopy "$(SolutionDir)dependencies\7z" "$(TargetDir)7z" /y /C
 echo D|xcopy "$(SolutionDir)config.json" "$(TargetDir)" /y /C</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -69,6 +70,7 @@ echo D|xcopy "$(SolutionDir)config.json" "$(TargetDir)" /y /C</Command>
     </Link>
     <PostBuildEvent>
       <Command>echo D|xcopy "$(SolutionDir)dependencies\aria2" "$(TargetDir)aria2" /y /C
+echo D|xcopy "$(SolutionDir)dependencies\7z" "$(TargetDir)7z" /y /C
 echo D|xcopy "$(SolutionDir)config.json" "$(TargetDir)" /y /C</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
