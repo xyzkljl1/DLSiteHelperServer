@@ -53,7 +53,7 @@ bool DLSiteClient::Extract(const QString & file_name, const QString & dir)
 	//通通不要加双引号，空格和括号无需处理
 	process->start(
 		QCoreApplication::applicationDirPath() + "/7z/7z.exe",
-		{"e",//解压
+		{"x",//解压,用e会失去目录结构
 		file_name,
 		"-o"+dir,//输出
 		"-aoa",//覆盖
