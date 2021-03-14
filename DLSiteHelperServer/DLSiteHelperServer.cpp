@@ -271,6 +271,7 @@ void DLSiteHelperServer::SyncLocalFile()
 	QRegExp reg(WORK_NAME_EXP);
 	DataBase database;
 	std::set<std::string> ct;
+	cmd = "UPDATE works set downloaded=0;";
 	for (auto& dir : local_files)
 	{
 		int pos = reg.indexIn(dir);
