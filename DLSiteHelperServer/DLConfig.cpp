@@ -3,6 +3,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
+#include "Util.h"
 QStringList DLConfig::local_dirs{"/Archive/"};
 QStringList DLConfig::local_tmp_dirs{"/Tmp/"};
 std::string DLConfig::REQUEST_PROXY="127.0.0.1:8000";
@@ -20,7 +21,7 @@ bool DLConfig::LoadFromFile(QString file_name)
 	QFile loadFile(file_name);
 	if (!loadFile.open(QIODevice::ReadOnly))
 	{
-		printf("Can't Load config.json\n");
+		LogError("Can't Load config.json\n");
 		return false;
 	}
 
@@ -32,7 +33,7 @@ bool DLConfig::LoadFromFile(QString file_name)
 
 	if (jsonError.error != QJsonParseError::NoError)
 	{
-		printf("config.json parse error\n");
+		LogError("config.json parse error\n");
 		return false;
 	}
 	auto root = jsonDoc.object();

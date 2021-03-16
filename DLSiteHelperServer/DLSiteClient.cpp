@@ -72,7 +72,7 @@ void DLSiteClient::OnDownloadDone(std::vector<Task> task_list)
 {
 	if (!running)
 		return;
-	printf("Download Done,Begin extract\n");
+	Log("Download Done,Begin extract\n");
 	QStringList extract_dirs;
 	for (auto&task : task_list)//暂时只见到过单个zip和分段rar两种格式
 	{
@@ -80,7 +80,7 @@ void DLSiteClient::OnDownloadDone(std::vector<Task> task_list)
 		{
 			if (task.download_ext.size() != 1 || task.urls.size() != 1)
 			{
-				printf("Extract Error On %s\n", task.id.c_str());
+				LogError("Extract Error On %s\n", task.id.c_str());
 				continue;
 			}
 		}
@@ -88,19 +88,19 @@ void DLSiteClient::OnDownloadDone(std::vector<Task> task_list)
 		{
 			if (task.download_ext.size() != 2 || task.urls.size() <= 1 || !task.download_ext.count("exe"))
 			{
-				printf("Extract Error On %s\n", task.id.c_str());
+				LogError("Extract Error On %s\n", task.id.c_str());
 				continue;
 			}
 		}
 		else
 		{
-			printf("Unknown File Format On %s\n", task.id.c_str());
+			LogError("Unknown File Format On %s\n", task.id.c_str());
 			continue;
 		}
 		QString dir = s2q(task.GetExtractPath());
 		if (!Extract(s2q(task.GetDownloadPath(0)), dir))
 		{
-			printf("Extract Error On %s _0\n", task.id.c_str());
+			LogError("Extract Error On %s _0\n", task.id.c_str());
 			QDir(dir).removeRecursively();
 			continue;
 		}
@@ -108,7 +108,7 @@ void DLSiteClient::OnDownloadDone(std::vector<Task> task_list)
 			QFile(s2q(task.GetDownloadPath(i))).remove();
 		extract_dirs+=dir;
 	}
-	printf("%d/%d works Extracted\n", (int)extract_dirs.size(), (int)task_list.size());
+	Log("%d/%d works Extracted\n", (int)extract_dirs.size(), (int)task_list.size());
 	running = false;
 	{
 		running = true;//RenameThread结束时将running置空
@@ -121,7 +121,7 @@ void DLSiteClient::OnDownloadAborted()
 {
 	if (!running)
 		return;
-	printf("Download Aborted\n");
+	LogError("Download Aborted\n");
 	running = false;
 }
 
@@ -142,7 +142,7 @@ bool DLSiteClient::RenameFile(const QString& file,const QString& id,const QStrin
 		return false;
 	if (parent.rename(old_name, new_name))
 		return true;
-	qDebug() << "Cant Rename " << old_name << "->" << new_name;
+	LogError("Cant Rename %s -> %s",q2s(old_name).c_str(), q2s(new_name).c_str());
 	return false;
 }
 void DLSiteClient::RenameThread(QStringList local_files)
@@ -173,7 +173,7 @@ void DLSiteClient::RenameThread(QStringList local_files)
 		}
 	}
 	running = false;
-	printf("Rename Done\n");
+	Log("Rename Done\n");
 }
 void DLSiteClient::DownloadThread(QStringList works,cpr::Cookies cookie,cpr::UserAgent user_agent)
 {
@@ -186,12 +186,12 @@ void DLSiteClient::DownloadThread(QStringList works,cpr::Cookies cookie,cpr::Use
 		task_list.push_back(pair.second.get());
 	if (!downloader->StartDownload(task_list, cookie, user_agent))
 	{
-		printf("Cant Start Download\n");
+		LogError("Cant Start Download\n");
 		running = false;
 		return;
 	}
 	else
-		printf("Fetch Done,Download Begin\n");
+		Log("Fetch Done,Download Begin\n");
 }
 Task DLSiteClient::TryDownloadWork(std::string id,cpr::Cookies cookie, cpr::UserAgent user_agent, bool only_refresh_cookie) {
 	Task task;
@@ -361,7 +361,7 @@ WorkType DLSiteClient::GetWorkTypeFromWeb(const std::string& page,const std::str
 		return WorkType::OTHER;
 	else if (types.count("ET3"))//作品类型:其它,无法确定类型
 		return WorkType::OTHER;
-	printf("Cant identify type: %s",id.c_str());
+	LogError("Cant identify type: %s",id.c_str());
 	return WorkType::OTHER;
 }
 
@@ -369,7 +369,7 @@ void DLSiteClient::StartDownload(const QByteArray& _cookies, const QByteArray& _
 {
 	if (this->running)
 	{
-		printf("Busy. Reject Download Request\n");
+		LogError("Busy. Reject Download Request\n");
 		return;
 	}
 	//因为都是在主线程运行，所以这里不需要用原子操作

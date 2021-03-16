@@ -7,6 +7,8 @@ extern std::string Format(const char * Format, ...);
 extern std::string q2s(const QString&);
 extern std::string q2s(const QByteArray&);
 extern QString s2q(const std::string&);
+extern void LogError(const char * Format, ...);
+extern void Log(const char * Format, ...);
 //较常作为std::string用的定义为std::string,否则为QString
 //一会用QString一会用std::string我好烦啊
 enum WorkType {

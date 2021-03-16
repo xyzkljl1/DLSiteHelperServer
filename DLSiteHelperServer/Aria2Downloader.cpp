@@ -182,7 +182,7 @@ bool Aria2Downloader::CheckTaskStatus(bool init)
 				auto response = session.Post();
 				if (response.status_code != 200)
 				{
-					printf("Query Aria2 Error %s on %s\n", response.text.c_str(), task.urls[i].c_str());
+					LogError("Query Aria2 Error %s on %s\n", response.text.c_str(), task.urls[i].c_str());
 					unknown_ct++;
 					continue;
 				}
@@ -234,14 +234,14 @@ bool Aria2Downloader::CheckTaskStatus(bool init)
 			auto response = session.Post();
 			if (response.status_code != 200)
 			{
-				printf("Update Aria2 Error %s on %s\n", response.text.c_str(), task.urls[i].c_str());
+				LogError("Update Aria2 Error %s on %s\n", response.text.c_str(), task.urls[i].c_str());
 				continue;
 			}
 			QJsonParseError jsonError;
 			QJsonDocument doc = QJsonDocument::fromJson(response.text.c_str(), &jsonError);
 			if (jsonError.error != QJsonParseError::NoError)
 			{
-				printf("Update Aria2 Error %s on %s\n", response.text.c_str(), task.urls[i].c_str());
+				LogError("Update Aria2 Error %s on %s\n", response.text.c_str(), task.urls[i].c_str());
 				continue;
 			}
 			auto root = doc.object();
@@ -256,10 +256,10 @@ bool Aria2Downloader::CheckTaskStatus(bool init)
 	}
 	if (init)//去掉无法/不需要下载的任务
 	{
-		printf("Start Download %d/%d works\n", (int)tmp_task_list.size(), (int)task_list.size());
+		Log("Start Download %d/%d works\n", (int)tmp_task_list.size(), (int)task_list.size());
 		task_list = tmp_task_list;
 	}
-	printf("%d(Running)/%d(Updating)/%d(Done)/%d(Unknown) in %d files. %d/%d updated. %6.2f/%6.2fMB downloaded.\n",
+	Log("%d(Running)/%d(Updating)/%d(Done)/%d(Unknown) in %d files. %d/%d updated. %6.2f/%6.2fMB downloaded.\n",
 		running_ct, update_ct, complete_ct, unknown_ct, total_ct, update_success_ct, update_ct, size_ct, total_size_ct);
 	return complete_ct == total_ct;
 }

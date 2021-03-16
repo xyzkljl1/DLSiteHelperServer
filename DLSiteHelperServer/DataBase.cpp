@@ -1,5 +1,6 @@
 #include "DataBase.h"
 #include "DLConfig.h"
+#include "Util.h"
 DataBase::DataBase()
 {
 	mysql_init(&my_sql);
@@ -19,5 +20,5 @@ void DataBase::SendQuery(std::string& cmd)
 	while (!mysql_next_result(&my_sql));
 	cmd = "";
 	if (mysql_errno(&my_sql))
-		printf("%s\n", mysql_error(&my_sql));
+		LogError("%s\n", mysql_error(&my_sql));
 }

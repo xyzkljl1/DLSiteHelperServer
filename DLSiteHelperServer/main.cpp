@@ -10,7 +10,10 @@ int main(int argc, char *argv[])
 	for (int i = 1; i < argc; ++i)
 		args.insert(argv[i]);
 	if (args.count("-u"))
+	{
 		setvbuf(stdout, NULL, _IONBF, 0);
+		setvbuf(stderr, NULL, _IONBF, 0);
+	}
 	if (args.count("-w"))
 	{
 		MyFakeWindow window;

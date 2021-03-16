@@ -1,6 +1,26 @@
 #include "Util.h"
 #include <stdarg.h>
 #include "DLConfig.h"
+void LogError(const char* _Format, ...)
+{
+	char buff[1024 * 24] = { 0 };
+	va_list args;
+	va_start(args, _Format);
+	vsprintf_s(buff, sizeof(buff), _Format, args);
+	va_end(args);
+	fprintf(stderr, buff);
+}
+
+void Log(const char* _Format, ...)
+{
+	char buff[1024 * 24] = { 0 };
+	va_list args;
+	va_start(args, _Format);
+	vsprintf_s(buff, sizeof(buff), _Format, args);
+	va_end(args);
+	fprintf(stdout, buff);
+}
+
 std::string Format(const char* Format, ...)
 {
 	char buff[1024 * 24] = { 0 };

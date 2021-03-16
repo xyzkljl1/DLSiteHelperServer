@@ -42,13 +42,13 @@ void DLSiteHelperServer::HandleRequest(Tufao::HttpServerRequest & request, Tufao
 	{
 		auto ret = GetAllInvalidWork();
 		ReplyText(response, Tufao::HttpResponseStatus::OK, ret);
-		printf("Response Query Request\n");
+		Log("Response Query Request\n");
 	}
 	else if (request_target.startsWith("/?QueryOverlapDLSite"))
 	{
 		auto ret = GetAllOverlapWork();
 		ReplyText(response, Tufao::HttpResponseStatus::OK, ret);
-		printf("Response Query Request\n");
+		Log("Response Query Request\n");
 	}
 	else if (request_target.startsWith("/?Download"))
 	{
@@ -56,18 +56,18 @@ void DLSiteHelperServer::HandleRequest(Tufao::HttpServerRequest & request, Tufao
 		//user-agent与cookie需要符合，user-agent通过请求的user-agent，cookie通过请求的data获得
 		DownloadAll(request.readBody(), request.headers().value("user-agent"));
 		ReplyText(response, Tufao::HttpResponseStatus::OK, "Started");
-		printf("Response Download Request\n");
+		Log("Response Download Request\n");
 	}
 	else if (request_target.startsWith("/?RenameLocal")) {
 		RenameLocal();
 		ReplyText(response, Tufao::HttpResponseStatus::OK, "Started");
-		printf("Response Rename Request\n");
+		Log("Response Rename Request\n");
 	}
 	else if (request_target.startsWith("/?UpdateBoughtItems"))
 	{
 		auto ret = UpdateBoughtItems(request.readBody());
 		ReplyText(response, Tufao::HttpResponseStatus::OK, ret);
-		printf("Update Bought Items\n");
+		Log("Update Bought Items\n");
 	}
 	else if (reg_mark_eliminated.indexIn(request_target) > 0)
 	{
@@ -80,13 +80,13 @@ void DLSiteHelperServer::HandleRequest(Tufao::HttpServerRequest & request, Tufao
 			mysql_query(&database.my_sql, cmd.c_str());
 			if (mysql_errno(&database.my_sql))
 			{
-				printf("%s\n", mysql_error(&database.my_sql));
+				LogError("%s\n", mysql_error(&database.my_sql));
 				ReplyText(response, Tufao::HttpResponseStatus::NOT_FOUND, "SQL Fail");
 			}
 			else
 			{
 				ReplyText(response, Tufao::HttpResponseStatus::OK, "Success");
-				printf("Mark %s Eliminated\n", id.c_str());
+				Log("Mark %s Eliminated\n", id.c_str());
 			}
 		}
 	}
@@ -101,13 +101,13 @@ void DLSiteHelperServer::HandleRequest(Tufao::HttpServerRequest & request, Tufao
 			mysql_query(&database.my_sql, cmd.c_str());
 			if (mysql_errno(&database.my_sql))
 			{
-				printf("%s\n", mysql_error(&database.my_sql));
+				LogError("%s\n", mysql_error(&database.my_sql));
 				ReplyText(response, Tufao::HttpResponseStatus::NOT_FOUND, "SQL Fail");
 			}
 			else
 			{
 				ReplyText(response, Tufao::HttpResponseStatus::OK, "Success");
-				printf("Mark %s Special Eliminated\n", id.c_str());
+				Log("Mark %s Special Eliminated\n", id.c_str());
 			}
 		}
 	}
@@ -124,13 +124,13 @@ void DLSiteHelperServer::HandleRequest(Tufao::HttpServerRequest & request, Tufao
 		mysql_query(&database.my_sql, cmd.c_str());
 		if (mysql_errno(&database.my_sql))
 		{
-			printf("%s\n", mysql_error(&database.my_sql));
+			LogError("%s\n", mysql_error(&database.my_sql));
 			ReplyText(response, Tufao::HttpResponseStatus::NOT_FOUND, "SQL Fail");
 		}
 		else
 		{
 			ReplyText(response, Tufao::HttpResponseStatus::OK, "Success");
-			printf("Mark Overlap %s%s %s\n", duplex ? "Duplex " : "", main_id.c_str(), sub_id.c_str());
+			Log("Mark Overlap %s%s %s\n", duplex ? "Duplex " : "", main_id.c_str(), sub_id.c_str());
 		}
 	}
 }
@@ -149,7 +149,7 @@ QString DLSiteHelperServer::GetAllOverlapWork()
 	mysql_query(&database.my_sql, "select Main,Sub from overlap;");
 	auto result = mysql_store_result(&database.my_sql);
 	if (mysql_errno(&database.my_sql))
-		printf("%s\n", mysql_error(&database.my_sql));
+		LogError("%s\n", mysql_error(&database.my_sql));
 	MYSQL_ROW row;
 	//暂时认为没有多层的覆盖关系，即没有合集的合集/三个作品相同但每个作品的描述里只写了与一个重合的情况
 	while (row = mysql_fetch_row(result))
@@ -191,14 +191,14 @@ QString DLSiteHelperServer::UpdateBoughtItems(const QByteArray & data)
 	mysql_query(&database.my_sql, "select count(*) from works where bought=1;");
 	auto result = mysql_store_result(&database.my_sql);
 	if (mysql_errno(&database.my_sql))
-		printf("%s\n", mysql_error(&database.my_sql));
+		LogError("%s\n", mysql_error(&database.my_sql));
 	int ret = 0;
 	MYSQL_ROW row;
 	if (row = mysql_fetch_row(result))
 		ret = atoi(row[0]);			
 	mysql_free_result(result);
 
-	printf("Update Bought List %d\n", ret);
+	Log("Update Bought List %d\n", ret);
 	return "Sucess";
 }
 
@@ -212,7 +212,7 @@ QString DLSiteHelperServer::GetAllInvalidWork()
 		mysql_query(&database.my_sql, "select id from works where eliminated=1 or downloaded=1 or bought=1;");
 		auto result = mysql_store_result(&database.my_sql);
 		if (mysql_errno(&database.my_sql))
-			printf("%s\n", mysql_error(&database.my_sql));
+			LogError("%s\n", mysql_error(&database.my_sql));
 		MYSQL_ROW row;
 		while (row = mysql_fetch_row(result))
 			invalid_work.insert(row[0]);
@@ -223,7 +223,7 @@ QString DLSiteHelperServer::GetAllInvalidWork()
 		mysql_query(&database.my_sql, "select Main,Sub from overlap;");
 		auto result = mysql_store_result(&database.my_sql);
 		if (mysql_errno(&database.my_sql))
-			printf("%s\n", mysql_error(&database.my_sql));
+			LogError("%s\n", mysql_error(&database.my_sql));
 		//覆盖关系是有多层的，例如一个作品有中日英版，中英版的介绍里各自只写了与日文版相通，然后买了中文版，就构成了一个链条
 		std::vector<std::pair<std::string, std::string>> relationship;
 		{
@@ -250,7 +250,7 @@ QString DLSiteHelperServer::GetAllInvalidWork()
 		mysql_query(&database.my_sql, "select id from works where specialEliminated=1;");
 		auto result = mysql_store_result(&database.my_sql);
 		if (mysql_errno(&database.my_sql))
-			printf("%s\n", mysql_error(&database.my_sql));
+			LogError("%s\n", mysql_error(&database.my_sql));
 		MYSQL_ROW row;
 		while (row = mysql_fetch_row(result))
 			invalid_work.insert(row[0]);
@@ -291,14 +291,14 @@ void DLSiteHelperServer::SyncLocalFile()
 	mysql_query(&database.my_sql, "select count(*) from works where downloaded=1;");
 	auto result = mysql_store_result(&database.my_sql);
 	if (mysql_errno(&database.my_sql))
-		printf("%s\n", mysql_error(&database.my_sql));
+		LogError("%s\n", mysql_error(&database.my_sql));
 	int ret = 0;
 	MYSQL_ROW row;
 	if (row = mysql_fetch_row(result))
 		ret = atoi(row[0]);
 	mysql_free_result(result);
 
-	printf("Sync from local %zd works->%d\n", ct.size(),ret);
+	Log("Sync from local %zd works->%d\n", ct.size(),ret);
 }
 
 void DLSiteHelperServer::DownloadAll(const QByteArray&cookie, const QByteArray& user_agent)
@@ -309,7 +309,7 @@ void DLSiteHelperServer::DownloadAll(const QByteArray&cookie, const QByteArray& 
 		mysql_query(&database.my_sql, "select id from works where downloaded=0 and bought=1 and eliminated=0;");
 		auto result = mysql_store_result(&database.my_sql);
 		if (mysql_errno(&database.my_sql))
-			printf("%s\n", mysql_error(&database.my_sql));
+			LogError("%s\n", mysql_error(&database.my_sql));
 		MYSQL_ROW row;
 		while (row = mysql_fetch_row(result))
 			works.push_back(QString::fromLocal8Bit(row[0]));
