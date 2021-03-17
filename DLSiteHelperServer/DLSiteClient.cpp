@@ -164,12 +164,20 @@ void DLSiteClient::RenameThread(QStringList local_files)
 		auto res=session.Get();
 		if (res.status_code == 200)
 		{
-			std::smatch result;
-			if (std::regex_search(res.text, result, std::regex("\"work_name\"[:\" ]*([^\"]*)\",")))
+			QJsonParseError error;
+			QJsonDocument doc = QJsonDocument::fromJson(res.text.c_str(), &error);
+			if (error.error != QJsonParseError::NoError || !doc.object().contains(id))
 			{
-				std::string file_name = result[1];
-				ct += RenameFile(file, id, s2q(file_name));
+				LogError("Cant Parse Json\n");
+				continue;
 			}
+			auto object = doc.object().value(id).toObject();
+			if(!object.contains("work_name"))
+			{
+				LogError("Cant Find Name\n");
+				continue;
+			}
+			ct += RenameFile(file, id, object.value("work_name").toString());
 		}
 	}
 	running = false;
