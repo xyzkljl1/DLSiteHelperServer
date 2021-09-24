@@ -323,10 +323,11 @@ WorkType DLSiteClient::GetWorkTypeFromWeb(const std::string& page,const std::str
 	</a>
 	</div>*/
 	std::set<std::string> types;
-	std::regex reg("class=\"icon_([A-Z]{1,10})\"");
+	std::regex reg("class=\"icon_([A-Z0-9]{1,10})\"");
 	int cursor = 0;
 	int start = -1;
-	//找到所有work_genre类的div里的所有图标类
+	//找到所有work_genre类的div里的所有图标类,即"ファイル形式"和"年齢指定"项
+	//page.find("class=\"work_genre\">", cursor)结尾的">"用于排除<div class="work_genre" id="category_type">(即"作品形式"项)，因为这个没用
 	while ((start = page.find("class=\"work_genre\">", cursor)) > 0)
 	{
 		start += std::string("class=\"work_genre\"").size();
