@@ -62,8 +62,15 @@ bool DLSiteClient::Extract(const QString & file_name, const QString & dir)
 		}, QIODevice::ReadOnly);
 	process->waitForStarted();
 	process->waitForFinished();
-	process->waitForReadyRead();
-	QByteArray response=process->readAll();
+	QByteArray response;
+	while (true)
+	{
+		process->waitForReadyRead();
+		QByteArray tmp = process->readAll();
+		if (tmp.isEmpty())
+			break;
+		response.append(tmp);
+	}
 	if (QString(response).indexOf("Everything is Ok") < 0)
 		return false;
 	return true;
