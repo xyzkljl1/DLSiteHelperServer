@@ -41,14 +41,14 @@ bool DLConfig::LoadFromFile(QString file_name)
 	if (root.contains(key)&&root.value(key).isArray())
 	{
 		DLConfig::local_dirs.clear();
-		for (auto & dir : root.value(key).toArray())
+		for (auto dir : root.value(key).toArray())
 			local_dirs.append(dir.toString());
 	}
 	key = "local_tmp_dirs";
 	if (root.contains(key) && root.value(key).isArray())
 	{
 		DLConfig::local_tmp_dirs.clear();
-		for (auto & dir : root.value(key).toArray())
+		for (auto dir : root.value(key).toArray())
 			local_tmp_dirs.append(dir.toString());
 	}
 	key = "DOWNLOAD_DIR";
