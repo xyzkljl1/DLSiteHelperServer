@@ -156,7 +156,7 @@ void DLSiteClient::RenameThread(QStringList local_files)
 {
 	cpr::Session session;//不需要cookie
 	session.SetVerifySsl(cpr::VerifySsl{ false });
-	session.SetProxies(cpr::Proxies{ {std::string("https"), std::string("127.0.0.1:8000")} });
+	session.SetProxies(cpr::Proxies{ {std::string("https"), DLConfig::REQUEST_PROXY} });
 	session.SetHeader(cpr::Header{ {"user-agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"} });
 	session.SetRedirect(true);
 
@@ -199,6 +199,8 @@ void DLSiteClient::DownloadThread(QStringList works,cpr::Cookies cookie,cpr::Use
 		futures[q2s(id)] = std::async(&TryDownloadWork, q2s(id), cookie,user_agent,false);
 	for (auto& pair : futures)//应该用whenall,但是并没有
 		task_list.push_back(pair.second.get());
+	//有时会下载失败403，疑似是因为cookie失效，在chrome里手动尝试下载任意文件可解
+	//TODO: fix it
 	if (!downloader->StartDownload(task_list, cookie, user_agent))
 	{
 		LogError("Cant Start Download\n");
