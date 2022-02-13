@@ -264,27 +264,47 @@ QString DLSiteHelperServer::GetAllInvalidWork()
 
 void DLSiteHelperServer::SyncLocalFile()
 {
-	QStringList local_files;
-	for (auto&dir : DLConfig::local_dirs)
-		local_files.append(QDir(dir).entryList({ "*" }, QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name));
 	std::string cmd;
 	QRegExp reg(WORK_NAME_EXP);
 	DataBase database;
 	std::set<std::string> ct;
-	cmd = "UPDATE works set downloaded=0;";
-	for (auto& dir : local_files)
+	std::set<std::string> eliminated_works;
 	{
-		int pos = reg.indexIn(dir);
-		if (pos > -1) {
-			std::string work_name = q2s(reg.cap(0));
-			cmd +="INSERT IGNORE INTO works(id) VALUES(\""+work_name+"\");"
-				"UPDATE works SET downloaded = 1 WHERE id = \""+work_name+"\"; ";
-			ct.insert(work_name);
-		}
-		if (cmd.length() > SQL_LENGTH_LIMIT)
-			database.SendQuery(cmd);
-
+		mysql_query(&database.my_sql, "select id from works where eliminated=1;");
+		auto result = mysql_store_result(&database.my_sql);
+		if (mysql_errno(&database.my_sql))
+			LogError("%s\n", mysql_error(&database.my_sql));
+		MYSQL_ROW row;
+		while (row = mysql_fetch_row(result))
+			eliminated_works.insert(row[0]);
+		mysql_free_result(result);
 	}
+	cmd = "UPDATE works set downloaded=0;";
+	for (auto& parent_dir : DLConfig::local_dirs)
+		for(auto& dir_info:QDir(parent_dir).entryInfoList({ "*" }, QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name))
+		{			
+			int pos = reg.indexIn(dir_info.fileName());
+			if (pos > -1) {
+				std::string work_name = q2s(reg.cap(0));
+				if(eliminated_works.count(work_name))//eliminated的无论是否download或bought都删除
+				{
+					//downloaded最开始已经设成0了，此处不需要set					
+					if (!QDir(dir_info.filePath()).removeRecursively())
+						Log("Can't Remove %s\n", q2s(dir_info.filePath()).c_str());
+					else
+						Log("Remove Eliminated: %s\n", q2s(dir_info.filePath()).c_str());
+				}
+				else
+				{
+					cmd += "INSERT IGNORE INTO works(id) VALUES(\"" + work_name + "\");"
+						"UPDATE works SET downloaded = 1 WHERE id = \"" + work_name + "\"; ";
+					ct.insert(work_name);
+				}
+			}
+			if (cmd.length() > SQL_LENGTH_LIMIT)
+				database.SendQuery(cmd);
+
+		}
 	if (cmd.length() > 0)
 		database.SendQuery(cmd);
 
