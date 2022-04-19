@@ -316,6 +316,7 @@ Task DLSiteClient::TryDownloadWork(std::string id,cpr::Cookies cookie, cpr::User
 		else//失败
 			break;
 	}
+	//有的作品会被删除，例:RJ320458
 	if (!task.ready)
 		qDebug() << "Receive " << id.c_str() << " Error:";
 	return task;

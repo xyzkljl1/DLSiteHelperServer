@@ -139,6 +139,7 @@ void DLSiteHelperServer::ReplyText(Tufao::HttpServerResponse & response,const Tu
 {
 	response.writeHead(Tufao::HttpResponseStatus::OK);
 	response.headers().replace("Content-Type", "text/plain");
+	response.headers().replace("Access-Control-Allow-Origin", "*");
 	response.end(message.toLocal8Bit());
 }
 
