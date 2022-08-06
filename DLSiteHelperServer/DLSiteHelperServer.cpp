@@ -52,6 +52,7 @@ void DLSiteHelperServer::HandleRequest(Tufao::HttpServerRequest & request, Tufao
 	}
 	else if (request_target.startsWith("/?Download"))
 	{
+		Log("Trying to start download,this may take few minutes");
 		SyncLocalFile();
 		//user-agent与cookie需要符合，user-agent通过请求的user-agent，cookie通过请求的data获得
 		DownloadAll(request.readBody(), request.headers().value("user-agent"));
