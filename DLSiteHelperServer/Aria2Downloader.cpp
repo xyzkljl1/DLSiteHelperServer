@@ -31,7 +31,7 @@ bool Aria2Downloader::StartDownload(const std::vector<Task>& _tasks, const cpr::
 	for (auto& _task : _tasks)
 		task_list.push_back(_task);
 	//初始化任务
-	if (CheckTaskStatus(true))
+	if (!CheckTaskStatus(true))
 	{
 		running = false;
 		return false;
@@ -47,7 +47,8 @@ void Aria2Downloader::CheckThread()
 #ifdef _DEBUG
 		Sleep(1000 * 30);
 #else
-		Sleep(1000 * 60 * 30);
+		//我的网速快如魔鬼，不需要把间隔设得很长
+		Sleep(1000 * 15 * 30);
 #endif
 	while (!CheckTaskStatus(false));
 	//Aria2会先在本地创建目标文件，所以要先检查任务状态再检查本地文件

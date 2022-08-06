@@ -33,9 +33,9 @@ Make sure other local port(4567/4319 by default) is available
 
 ## Other 
 
-在aria2/aria2.conf里设置file-allocation=falloc时需以管理员权限运行以获得最佳性能(实际没多大区别)  
+1.在aria2/aria2.conf里设置file-allocation=falloc时需以管理员权限运行以获得最佳性能(实际没多大区别)  
 
-解决 浏览DLSite时部分请求过慢导致网页一直转圈圈无法触发DLSiteHelper的注入脚本的问题:   
+2.浏览DLSite时部分请求过慢导致网页一直转圈圈无法触发DLSiteHelper的注入脚本:   
 目前不知道怎么屏蔽垃圾域名,暂定用改host和代理的方式缓解  
 在host里添加(垃圾请求):  
 35.227.248.159 pixel.tapad.com  
@@ -47,8 +47,12 @@ file.chobit.cc 走直连(下载试听)
 idsync.rlcdn.com 走专用代理(垃圾请求)  
 其它请求走岛风Go  
 
+3.有时下载出现403:
+疑似是cookie问题，在chrome中下载任意作品(无需下载完成)后再次尝试
+
 
 ## TODO
 
 修复有时页面加载完，但插件没有去除已阅作品的bug  
 修复购物车页面和添加至购物车的弹出窗口下方的列表未去除已阅作品的bug  
+修复偶尔出现403的问题  
