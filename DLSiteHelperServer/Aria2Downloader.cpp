@@ -31,7 +31,7 @@ bool Aria2Downloader::StartDownload(const std::vector<Task>& _tasks, const cpr::
 	for (auto& _task : _tasks)
 		task_list.push_back(_task);
 	//初始化任务
-	if (!CheckTaskStatus(true))
+	if (CheckTaskStatus(true)&&!task_list.empty())
 	{
 		running = false;
 		return false;
