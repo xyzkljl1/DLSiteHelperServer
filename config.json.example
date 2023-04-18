@@ -1,20 +1,15 @@
 {
   "local_dirs": [
     "G:/ASMR_archive/",
-    "G:/ASMR_cant_archive/",
-    "G:/ASMR_Chinese/",
-    "G:/DL_Pic/",
-    "G:/DL_Anime/",
-    "G:/DL_Game/",
-    "E:/IDMDownload/avater/"
+    "G:/ASMR_cant_archive/"
   ],
   "local_tmp_dirs": [
     "E:/IDMDownload/tmp/"
   ],
   "DOWNLOAD_DIR": "E:/IDMDownload/AutoDownload/",
   "SERVER_PORT": 4567,
-  "DATABASE_PORT": 4321,
-  "REQUEST_PROXY": "127.0.0.1:8000",
+  "DATABASE_PORT": 3306,
+  "REQUEST_PROXY": "127.0.0.1:1080",
   "REQUEST_PROXY_TYPE": "https",
   "ARIA2_PORT": 4319,
   "ARIA2_PROXY": "127.0.0.1:8000",

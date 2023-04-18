@@ -13,7 +13,7 @@ Only support Windows x64
 在本地指定端口(默认4321)运行mysql服务端，使用build_database.sql创建数据库  
 于本地指定端口(默认8000)运行代理  
 在Chrome上登录DLSite并运行DLSiteHelper插件  
-于config.json配置下载/存储目录和端口  
+于config.json配置下载/存储目录和端口(参考config.json.example)  
 确保程序要使用的端口(默认4567/4319)空闲  
 
 
