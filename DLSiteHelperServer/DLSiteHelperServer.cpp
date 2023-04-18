@@ -10,17 +10,19 @@
 
 const int SQL_LENGTH_LIMIT = 10000;
 #define WORK_NAME_EXP "[RVBJ]{2}[0-9]{3,6}"
+#define SERIES_NAME_EXP "^S "
+
 
 DLSiteHelperServer::DLSiteHelperServer(QObject* parent):Tufao::HttpServer(parent)
 {
 	//通过HKEY_LOCAL_MACHINE/SYSTEM/CurrentControlSet/Services/Tcpip/Parameters/ReservedPorts项将端口设为保留
 	listen(QHostAddress::Any, DLConfig::SERVER_PORT);
 	connect(this, &DLSiteHelperServer::requestReady, this, &DLSiteHelperServer::HandleRequest);
-	SyncLocalFile();
+	SyncLocalFileToDB();
 	daily_timer.setInterval(86400*1000);
 	daily_timer.start();
 	//每天更新本地文件
-	connect(&daily_timer, &QTimer::timeout, this, &DLSiteHelperServer::SyncLocalFile);
+	connect(&daily_timer, &QTimer::timeout, this, &DLSiteHelperServer::SyncLocalFileToDB);
 }
 
 DLSiteHelperServer::~DLSiteHelperServer()
@@ -53,7 +55,7 @@ void DLSiteHelperServer::HandleRequest(Tufao::HttpServerRequest & request, Tufao
 	else if (request_target.startsWith("/?Download"))
 	{
 		Log("Trying to start download,this may take few minutes");
-		SyncLocalFile();
+		SyncLocalFileToDB();
 		//user-agent与cookie需要符合，user-agent通过请求的user-agent，cookie通过请求的data获得
 		DownloadAll(request.readBody(), request.headers().value("user-agent"));
 		ReplyText(response, Tufao::HttpResponseStatus::OK, "Started");
@@ -264,7 +266,7 @@ QString DLSiteHelperServer::GetAllInvalidWork()
 	return s2q(ret);
 }
 
-void DLSiteHelperServer::SyncLocalFile()
+void DLSiteHelperServer::SyncLocalFileToDB()
 {
 	std::string cmd;
 	QRegExp reg(WORK_NAME_EXP);
@@ -282,31 +284,30 @@ void DLSiteHelperServer::SyncLocalFile()
 		mysql_free_result(result);
 	}
 	cmd = "UPDATE works set downloaded=0;";
-	for (auto& parent_dir : DLConfig::local_dirs)
-		for(auto& dir_info:QDir(parent_dir).entryInfoList({ "*" }, QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name))
-		{			
-			int pos = reg.indexIn(dir_info.fileName());
-			if (pos > -1) {
-				std::string work_name = q2s(reg.cap(0));
-				if(eliminated_works.count(work_name))//eliminated的无论是否download或bought都删除
-				{
-					//downloaded最开始已经设成0了，此处不需要set					
-					if (!QDir(dir_info.filePath()).removeRecursively())
-						Log("Can't Remove %s\n", q2s(dir_info.filePath()).c_str());
-					else
-						Log("Remove Eliminated: %s\n", q2s(dir_info.filePath()).c_str());
-				}
+	for(auto& dir: GetLocalFiles(DLConfig::local_dirs))
+	{			
+		int pos = reg.indexIn(QFileInfo(dir).fileName());
+		if (pos > -1) {
+			std::string work_name = q2s(reg.cap(0));
+			if(eliminated_works.count(work_name))//eliminated的无论是否download或bought都删除
+			{
+				//downloaded最开始已经设成0了，此处不需要set					
+				if (!QDir(dir).removeRecursively())
+					Log("Can't Remove %s\n", q2s(dir).c_str());
 				else
-				{
-					cmd += "INSERT IGNORE INTO works(id) VALUES(\"" + work_name + "\");"
-						"UPDATE works SET downloaded = 1 WHERE id = \"" + work_name + "\"; ";
-					ct.insert(work_name);
-				}
+					Log("Remove Eliminated: %s\n", q2s(dir).c_str());
 			}
-			if (cmd.length() > SQL_LENGTH_LIMIT)
-				database.SendQuery(cmd);
-
+			else
+			{
+				cmd += "INSERT IGNORE INTO works(id) VALUES(\"" + work_name + "\");"
+					"UPDATE works SET downloaded = 1 WHERE id = \"" + work_name + "\"; ";
+				ct.insert(work_name);
+			}
 		}
+		if (cmd.length() > SQL_LENGTH_LIMIT)
+			database.SendQuery(cmd);
+
+	}
 	if (cmd.length() > 0)
 		database.SendQuery(cmd);
 
@@ -342,18 +343,25 @@ void DLSiteHelperServer::DownloadAll(const QByteArray&cookie, const QByteArray& 
 
 void DLSiteHelperServer::RenameLocal()
 {
+	client.StartRename(GetLocalFiles(DLConfig::local_dirs + DLConfig::local_tmp_dirs));
+}
+
+//获得指定根目录下所有work的路径
+//遍历根目录下一级以及根目录下[以SERIES_NAME_EXP开头的目录]的下一级
+QStringList DLSiteHelperServer::GetLocalFiles(const QStringList& root)
+{
 	QStringList ret;
-	QStringList local_files;
-	for (auto&dir : DLConfig::local_dirs+ DLConfig::local_tmp_dirs)
-		for(auto& info: QDir(dir).entryInfoList({ "*" }, QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name))
-			local_files.append(info.filePath());
-	QRegExp reg(WORK_NAME_EXP);
-	std::set<std::string> ct;
-	for (auto& dir : local_files)
-	{
-		int pos = reg.indexIn(dir);
-		if (pos > -1)
-			ret.push_back(dir);
-	}
-	client.StartRename(ret);
+	QRegExp regex_is_work(WORK_NAME_EXP);
+	QRegExp regex_is_series(SERIES_NAME_EXP);
+	for (auto& dir : root)
+		for (auto& info : QDir(dir).entryInfoList({ "*" }, QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name))
+			if (regex_is_work.indexIn(info.fileName()) > -1)
+				ret.push_back(info.filePath());
+			else if (regex_is_series.indexIn(info.fileName()) > -1)
+			{
+				for (auto& sub_info : QDir(info.filePath()).entryInfoList({ "*" }, QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name))
+					if (regex_is_work.indexIn(sub_info.fileName()) > -1)
+						ret.push_back(sub_info.filePath());
+			}
+	return ret;
 }

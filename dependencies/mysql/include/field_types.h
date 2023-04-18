@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+/* Copyright (c) 2014, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -49,12 +49,8 @@ extern "C" {
 /**
   Column types for MySQL
 */
-enum enum_field_types
-#if defined(__cplusplus) && __cplusplus > 201103L
-    // N2764: Forward enum declarations, added in C++11
-    : int
-#endif /* __cplusplus */
-{ MYSQL_TYPE_DECIMAL,
+enum enum_field_types {
+  MYSQL_TYPE_DECIMAL,
   MYSQL_TYPE_TINY,
   MYSQL_TYPE_SHORT,
   MYSQL_TYPE_LONG,
@@ -72,9 +68,11 @@ enum enum_field_types
   MYSQL_TYPE_VARCHAR,
   MYSQL_TYPE_BIT,
   MYSQL_TYPE_TIMESTAMP2,
-  MYSQL_TYPE_DATETIME2,         /**< Internal to MySQL. Not used in protocol */
-  MYSQL_TYPE_TIME2,             /**< Internal to MySQL. Not used in protocol */
-  MYSQL_TYPE_TYPED_ARRAY = 244, /** Used for replication only */
+  MYSQL_TYPE_DATETIME2,   /**< Internal to MySQL. Not used in protocol */
+  MYSQL_TYPE_TIME2,       /**< Internal to MySQL. Not used in protocol */
+  MYSQL_TYPE_TYPED_ARRAY, /**< Used for replication only */
+  MYSQL_TYPE_INVALID = 243,
+  MYSQL_TYPE_BOOL = 244, /**< Currently just a placeholder */
   MYSQL_TYPE_JSON = 245,
   MYSQL_TYPE_NEWDECIMAL = 246,
   MYSQL_TYPE_ENUM = 247,
@@ -85,7 +83,8 @@ enum enum_field_types
   MYSQL_TYPE_BLOB = 252,
   MYSQL_TYPE_VAR_STRING = 253,
   MYSQL_TYPE_STRING = 254,
-  MYSQL_TYPE_GEOMETRY = 255 };
+  MYSQL_TYPE_GEOMETRY = 255
+};
 
 #ifdef __cplusplus
 }  // extern "C"

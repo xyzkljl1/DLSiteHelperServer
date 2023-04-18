@@ -23,9 +23,10 @@ protected:
 	QString GetAllOverlapWork();
 	QString UpdateBoughtItems(const QByteArray& data);
 
-	void SyncLocalFile();
+	void SyncLocalFileToDB();
 	void DownloadAll(const QByteArray& cookie, const QByteArray& user_agent);
 	void RenameLocal();
+	QStringList GetLocalFiles(const QStringList& root);
 protected:
 	DLSiteClient client;
 	QTimer daily_timer;
