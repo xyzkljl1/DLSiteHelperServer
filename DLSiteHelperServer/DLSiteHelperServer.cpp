@@ -9,7 +9,7 @@
 #include "DataBase.h"
 
 const int SQL_LENGTH_LIMIT = 10000;
-#define WORK_NAME_EXP "[RVBJ]{2}[0-9]{3,6}"
+#define WORK_NAME_EXP "[RVBJ]{2}[0-9]{3,8}"
 #define SERIES_NAME_EXP "^S "
 
 
