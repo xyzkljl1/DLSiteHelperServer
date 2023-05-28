@@ -19,7 +19,7 @@ DLSiteHelperServer::DLSiteHelperServer(QObject* parent):Tufao::HttpServer(parent
 	//通过HKEY_LOCAL_MACHINE/SYSTEM/CurrentControlSet/Services/Tcpip/Parameters/ReservedPorts项将端口设为保留
 	listen(QHostAddress::Any, DLConfig::SERVER_PORT);
 	connect(this, &DLSiteHelperServer::requestReady, this, &DLSiteHelperServer::HandleRequest);
-	//SyncLocalFileToDB();
+	SyncLocalFileToDB();
 	daily_timer.setInterval(86400*1000);
 	daily_timer.start();
 	//每天更新本地文件
