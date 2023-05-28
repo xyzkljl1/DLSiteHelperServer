@@ -9,7 +9,8 @@
 #include "DataBase.h"
 
 const int SQL_LENGTH_LIMIT = 10000;
-#define WORK_NAME_EXP "[RVBJ]{2}[0-9]{3,8}"
+//RJ号中5位数字的前面加0补到6位，7位数字的补到8位
+#define WORK_NAME_EXP "([RVBJ]{2})([0-9]{3,8})"
 #define SERIES_NAME_EXP "^S "
 
 
@@ -18,7 +19,7 @@ DLSiteHelperServer::DLSiteHelperServer(QObject* parent):Tufao::HttpServer(parent
 	//通过HKEY_LOCAL_MACHINE/SYSTEM/CurrentControlSet/Services/Tcpip/Parameters/ReservedPorts项将端口设为保留
 	listen(QHostAddress::Any, DLConfig::SERVER_PORT);
 	connect(this, &DLSiteHelperServer::requestReady, this, &DLSiteHelperServer::HandleRequest);
-	SyncLocalFileToDB();
+	//SyncLocalFileToDB();
 	daily_timer.setInterval(86400*1000);
 	daily_timer.start();
 	//每天更新本地文件
@@ -285,13 +286,13 @@ void DLSiteHelperServer::SyncLocalFileToDB()
 	}
 	cmd = "UPDATE works set downloaded=0;";
 	for(auto& dir: GetLocalFiles(DLConfig::local_dirs))
-	{			
+	{
 		int pos = reg.indexIn(QFileInfo(dir).fileName());
 		if (pos > -1) {
 			std::string work_name = q2s(reg.cap(0));
 			if(eliminated_works.count(work_name))//eliminated的无论是否download或bought都删除
 			{
-				//downloaded最开始已经设成0了，此处不需要set					
+				//downloaded最开始已经设成0了，此处不需要set
 				if (!QDir(dir).removeRecursively())
 					Log("Can't Remove %s\n", q2s(dir).c_str());
 				else

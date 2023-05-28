@@ -166,6 +166,15 @@ void DLSiteClient::RenameThread(QStringList local_files)
 	{
 		reg.indexIn(file);
 		QString id = reg.cap(0);
+		{
+			//检查id格式，因为可能通过其它来源下载的文件格式不正确(没有补0)
+			QString num_postfix = reg.cap(2);
+			if (num_postfix.length() % 2 != 0)//奇数位数字的前面补0
+			{
+				num_postfix = "0" + num_postfix;
+				id = reg.cap(1) + num_postfix;
+			}
+		}
 		std::string url = Format("https://www.dlsite.com/maniax/product/info/ajax?product_id=%s&cdn_cache_min=0", q2s(id).c_str());
 		session.SetUrl(url);
 		auto res=session.Get();
@@ -418,7 +427,14 @@ void DLSiteClient::StartRename(const QStringList& _files)
 	{
 		reg.indexIn(file);
 		QString id = reg.cap(0);
-		if(QDir(file).dirName().size()<id.size()+2)//原来已经有名字的不需要重命名
+		if (id.isEmpty())
+			continue;
+		QString num_postfix = reg.cap(2);
+		//检查id格式，因为可能通过其它来源下载的文件格式不正确(没有补0)
+		if (num_postfix.length() % 2 != 0)//奇数位数字的前面需要补0
+			local_files.push_back(file);
+		//检查是否已经重命名过
+		else if(QDir(file).dirName().size()<id.size()+2)
 			local_files.push_back(file);
 	}
 	std::thread thread(&DLSiteClient::RenameThread,this,local_files);
