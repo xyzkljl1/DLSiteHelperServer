@@ -366,7 +366,7 @@ WorkType DLSiteClient::GetWorkTypeFromWeb(const std::string& page,const std::str
 		return WorkType::PROGRAM;
 	else if (types.count("MP4"))//文件形式:MP4
 		return WorkType::VIDEO;
-	else if (types.count("MP3") || types.count("WAV"))//文件形式:MP3、WAV
+	else if (types.count("MP3") || types.count("WAV") || types.count("FLAC"))//文件形式:MP3、WAV、FLAC
 		return WorkType::AUDIO;
 	else if (types.count("IJP") || types.count("PNG") || types.count("IBP") || types.count("HTI"))//文件形式:JPEG、BMP、HTML+图片
 		return WorkType::PICTURE;

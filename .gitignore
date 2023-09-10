@@ -32,3 +32,8 @@ boost_1_74_0/*
 *.exe
 *.out
 *.app
+/.vs
+/DLSiteHelperServer/x64
+/x64
+/config.json
+*.user
