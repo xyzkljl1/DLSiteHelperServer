@@ -366,7 +366,7 @@ WorkType DLSiteClient::GetWorkTypeFromWeb(const std::string& page,const std::str
 		return WorkType::PROGRAM;
 	else if (types.count("MP4"))//文件形式:MP4
 		return WorkType::VIDEO;
-	else if (types.count("MP3") || types.count("WAV") || types.count("FLAC"))//文件形式:MP3、WAV、FLAC
+	else if (types.count("MP3") || types.count("WAV") || types.count("FLC"))//文件形式:MP3、WAV、FLAC
 		return WorkType::AUDIO;
 	else if (types.count("IJP") || types.count("PNG") || types.count("IBP") || types.count("HTI"))//文件形式:JPEG、BMP、HTML+图片
 		return WorkType::PICTURE;
@@ -383,7 +383,7 @@ WorkType DLSiteClient::GetWorkTypeFromWeb(const std::string& page,const std::str
 		return WorkType::PICTURE;
 	else if (types.count("PVA"))//文件形式:专用浏览器，通常和WPD一起出现并且是图片类型，但是不能如同图片一般打开，视作其它
 		return WorkType::OTHER;
-	else if (types.count("WPD") || types.count("PDF") || types.count("icon_HTF"))//文件形式:专用浏览器、PDF同捆、PDF、HTML(flash)，无法确定类型
+	else if (types.count("WPD") || types.count("PDF") || types.count("HTF"))//文件形式:专用浏览器、PDF同捆、PDF、HTML(flash)，无法确定类型
 		return WorkType::OTHER;
 	else if (types.count("AVI"))//文件形式:AVI，无法确定类型
 		return WorkType::OTHER;
