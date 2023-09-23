@@ -18,7 +18,8 @@ enum WorkType {
 	PICTURE,//图片
 	PROGRAM,//程序
 	OTHER,//获取失败/获取到了但不知道是什么
-	CANTDOWNLOAD//浏览器专用，无法下载
+	CANTDOWNLOAD,//浏览器专用，无法下载
+	SHIT//女性向
 };
 struct Task {
 	std::string id;//RJ号

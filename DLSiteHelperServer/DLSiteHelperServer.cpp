@@ -24,6 +24,8 @@ DLSiteHelperServer::DLSiteHelperServer(QObject* parent):Tufao::HttpServer(parent
 	daily_timer.start();
 	//每天更新本地文件
 	connect(&daily_timer, &QTimer::timeout, this, &DLSiteHelperServer::SyncLocalFileToDB);
+	//排除本地女性向作品,由于不需要经常使用，直接改代码调用
+	//EliminateOTMWorks();
 }
 
 DLSiteHelperServer::~DLSiteHelperServer()
@@ -365,4 +367,19 @@ QStringList DLSiteHelperServer::GetLocalFiles(const QStringList& root)
 						ret.push_back(sub_info.filePath());
 			}
 	return ret;
+}
+
+void DLSiteHelperServer::EliminateOTMWorks() {
+	auto ids=client.GetOTMWorks(GetLocalFiles(DLConfig::local_dirs));
+	std::string cmd = "";
+	DataBase database;
+	for (auto& id : ids)
+	{
+		cmd += "UPDATE works SET eliminated = 1 WHERE id = \"" + q2s(id) + "\"; ";//由于只检查了本地文件，此处不需要insert
+		if (cmd.length() > SQL_LENGTH_LIMIT)
+			database.SendQuery(cmd);
+	}
+	if (cmd.length() > 0)
+		database.SendQuery(cmd);
+
 }

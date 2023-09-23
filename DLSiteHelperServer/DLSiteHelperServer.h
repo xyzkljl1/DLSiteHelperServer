@@ -27,6 +27,7 @@ protected:
 	void DownloadAll(const QByteArray& cookie, const QByteArray& user_agent);
 	void RenameLocal();
 	QStringList GetLocalFiles(const QStringList& root);
+	void EliminateOTMWorks();
 protected:
 	DLSiteClient client;
 	QTimer daily_timer;

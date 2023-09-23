@@ -18,6 +18,7 @@ public:
 	//线程不安全，只能从主线程调用
 	void StartDownload(const QByteArray& cookies, const QByteArray& user_agent,const QStringList& works);
 	void StartRename(const QStringList& files);
+	QStringList GetOTMWorks(const QStringList& works);
 	static Task TryDownloadWork(std::string id, cpr::Cookies cookie, cpr::UserAgent user_agent, bool only_refresh_cookie);
 protected:
 	//以防万一直接传值

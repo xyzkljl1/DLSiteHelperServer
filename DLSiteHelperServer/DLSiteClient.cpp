@@ -160,7 +160,7 @@ void DLSiteClient::RenameThread(QStringList local_files)
 	session.SetHeader(cpr::Header{ {"user-agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"} });
 	session.SetRedirect(true);
 
-	int ct=0;
+	int ct = 0;
 	auto reg = DLSiteHelperServer::GetWorkNameExp();
 	for (const auto& file : local_files)
 	{
@@ -177,7 +177,7 @@ void DLSiteClient::RenameThread(QStringList local_files)
 		}
 		std::string url = Format("https://www.dlsite.com/maniax/product/info/ajax?product_id=%s&cdn_cache_min=0", q2s(id).c_str());
 		session.SetUrl(url);
-		auto res=session.Get();
+		auto res = session.Get();
 		if (res.status_code == 200)
 		{
 			QJsonParseError error;
@@ -188,7 +188,7 @@ void DLSiteClient::RenameThread(QStringList local_files)
 				continue;
 			}
 			auto object = doc.object().value(id).toObject();
-			if(!object.contains("work_name"))
+			if (!object.contains("work_name"))
 			{
 				LogError("Cant Find Name\n");
 				continue;
@@ -199,6 +199,7 @@ void DLSiteClient::RenameThread(QStringList local_files)
 	running = false;
 	Log("Rename Done\n");
 }
+
 void DLSiteClient::DownloadThread(QStringList works,cpr::Cookies cookie,cpr::UserAgent user_agent)
 {
 	std::vector<Task> task_list;
@@ -345,9 +346,9 @@ WorkType DLSiteClient::GetWorkTypeFromWeb(const std::string& page,const std::str
 	std::regex reg("class=\"icon_([A-Z0-9]{1,10})\"");
 	int cursor = 0;
 	int start = -1;
-	//找到所有work_genre类的div里的所有图标类,即"ファイル形式"和"年齢指定"项
-	//page.find("class=\"work_genre\">", cursor)结尾的">"用于排除<div class="work_genre" id="category_type">(即"作品形式"项)，因为这个没用
-	while ((start = page.find("class=\"work_genre\">", cursor)) > 0)
+	//找到所有work_genre类的div里的所有图标类,即"作品形式"、"ファイル形式"、"年齢指定"、"その他"
+	//有的作品仅有作品形式如VJ015443
+	while ((start = page.find("class=\"work_genre\"", cursor)) > 0)
 	{
 		start += std::string("class=\"work_genre\"").size();
 		int end = page.find("</div>", start);
@@ -358,19 +359,23 @@ WorkType DLSiteClient::GetWorkTypeFromWeb(const std::string& page,const std::str
 			types.insert(result[1]);
 		cursor = end;
 	}
-	//优先根据文件形式判断，其次根据作品类型判断
+	//注意顺序，根据その他、文件形式、作品形式判断
 	//因为有的作品格式跟一般的不一致
-	if (types.count("WBO"))//文件形式:浏览器专用，不下载 ※最优先
+	if (types.count("OTM"))//その他:乙女向け ※最优先
+		return WorkType::SHIT;
+	else if (types.count("WBO"))//文件形式:浏览器专用，不下载
 		return WorkType::CANTDOWNLOAD;
 	else if (types.count("EXE"))//文件形式:软件
 		return WorkType::PROGRAM;
-	else if (types.count("MP4"))//文件形式:MP4
+	else if (types.count("MP4")|| types.count("MWM"))//文件形式:MP4、WMV
 		return WorkType::VIDEO;
-	else if (types.count("MP3") || types.count("WAV") || types.count("FLC"))//文件形式:MP3、WAV、FLAC
+	else if (types.count("ADO"))//文件形式:オーディオ(audio)
+		return WorkType::AUDIO;
+	else if (types.count("MP3") || types.count("WAV") || types.count("FLC") || types.count("WMA")|| types.count("AAC"))//文件形式:MP3、WAV、FLAC、WMA、AAC
 		return WorkType::AUDIO;
 	else if (types.count("IJP") || types.count("PNG") || types.count("IBP") || types.count("HTI"))//文件形式:JPEG、BMP、HTML+图片
 		return WorkType::PICTURE;
-	else if (types.count("SOU") || types.count("MUS"))//作品类型:音声、音乐(其它类型的作品含有音乐是MS2)
+	else if (types.count("SOU") || types.count("MUS"))//作品类型:音声sound、音乐music(其它类型的作品含有音乐是MS2)
 		return WorkType::AUDIO;
 	else if (types.count("RPG") || types.count("ACN") || types.count("STG") || types.count("SLN") || types.count("ADV")
 		|| types.count("DNV") || types.count("PZL") || types.count("TYP") || types.count("QIZ")
@@ -439,4 +444,40 @@ void DLSiteClient::StartRename(const QStringList& _files)
 	}
 	std::thread thread(&DLSiteClient::RenameThread,this,local_files);
 	thread.detach();
+}
+//对所有本地文件，重新获取类型以获得女性向(otome)作品列表，阻塞,返回rj号
+QStringList DLSiteClient::GetOTMWorks(const QStringList& local_files)
+{
+	QStringList ret;
+	cpr::Session session;//不需要cookie
+	session.SetVerifySsl(cpr::VerifySsl{ false });
+	session.SetProxies(cpr::Proxies{ {std::string("https"), DLConfig::REQUEST_PROXY} });
+	session.SetHeader(cpr::Header{ {"user-agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"} });
+	session.SetRedirect(true);
+
+	int ct = 0;
+	auto reg = DLSiteHelperServer::GetWorkNameExp();
+	for (const auto& file : local_files)
+	{
+		reg.indexIn(file);
+		QString id = reg.cap(0);
+		{
+			//检查id格式，因为可能通过其它来源下载的文件格式不正确(没有补0)
+			QString num_postfix = reg.cap(2);
+			if (num_postfix.length() % 2 != 0)//奇数位数字的前面补0
+			{
+				num_postfix = "0" + num_postfix;
+				id = reg.cap(1) + num_postfix;
+			}
+		}
+		std::string url = Format("https://www.dlsite.com/maniax/work/=/product_id/%s.html", q2s(id).c_str());
+		session.SetUrl(cpr::Url{ url });
+		auto res = session.Get();
+		WorkType type = WorkType::UNKNOWN;
+		if (res.status_code == 200)
+			type = GetWorkTypeFromWeb(res.text, q2s(id));
+		if (type == WorkType::SHIT)
+			ret.append(id);
+	}
+	return ret;
 }
