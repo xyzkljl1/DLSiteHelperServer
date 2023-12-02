@@ -161,7 +161,7 @@ void DLSiteClient::RenameThread(QStringList local_files)
 	session.SetRedirect(true);
 
 	int ct = 0;
-	auto reg = DLSiteHelperServer::GetWorkNameExp();
+	auto reg = DLSiteHelperServer::GetWorkNameExpSep();
 	for (const auto& file : local_files)
 	{
 		reg.indexIn(file);
@@ -427,7 +427,7 @@ void DLSiteClient::StartRename(const QStringList& _files)
 	//因为都是在主线程运行，所以这里不需要用原子操作
 	running = true;
 	QStringList local_files;
-	auto reg = DLSiteHelperServer::GetWorkNameExp();
+	auto reg = DLSiteHelperServer::GetWorkNameExpSep();
 	for (const auto& file : _files)
 	{
 		reg.indexIn(file);
@@ -456,7 +456,7 @@ QStringList DLSiteClient::GetOTMWorks(const QStringList& local_files)
 	session.SetRedirect(true);
 
 	int ct = 0;
-	auto reg = DLSiteHelperServer::GetWorkNameExp();
+	auto reg = DLSiteHelperServer::GetWorkNameExpSep();
 	for (const auto& file : local_files)
 	{
 		reg.indexIn(file);

@@ -9,8 +9,9 @@
 #include "DataBase.h"
 
 const int SQL_LENGTH_LIMIT = 10000;
-//RJ号中5位数字的前面加0补到6位，7位数字的补到8位
-#define WORK_NAME_EXP "([RVBJ]{2})([0-9]{3,8})"
+#define WORK_NAME_EXP "[RVBJ]{2}[0-9]{3,8}"
+//把字母和数字分别capture的表达式
+#define WORK_NAME_EXP_SEP "([RVBJ]{2})([0-9]{3,8})"
 #define SERIES_NAME_EXP "^S "
 
 
@@ -32,9 +33,9 @@ DLSiteHelperServer::~DLSiteHelperServer()
 {
 }
 
-QRegExp DLSiteHelperServer::GetWorkNameExp()
+QRegExp DLSiteHelperServer::GetWorkNameExpSep()
 {
-	return QRegExp(WORK_NAME_EXP);
+	return QRegExp(WORK_NAME_EXP_SEP);
 }
 
 void DLSiteHelperServer::HandleRequest(Tufao::HttpServerRequest & request, Tufao::HttpServerResponse & response)
@@ -45,13 +46,13 @@ void DLSiteHelperServer::HandleRequest(Tufao::HttpServerRequest & request, Tufao
 	QRegExp reg_mark_overlap("(/\?markOverlap)&main=(" WORK_NAME_EXP ")&sub=(" WORK_NAME_EXP ")&duplex=([0-9])");
 	if (request_target.startsWith("/?QueryInvalidDLSite"))
 	{
-		auto ret = GetAllInvalidWork();
+		auto ret = GetAllInvalidWorksString();
 		ReplyText(response, Tufao::HttpResponseStatus::OK, ret);
 		Log("Response Query Request\n");
 	}
 	else if (request_target.startsWith("/?QueryOverlapDLSite"))
 	{
-		auto ret = GetAllOverlapWork();
+		auto ret = GetAllOverlapWorksString();
 		ReplyText(response, Tufao::HttpResponseStatus::OK, ret);
 		Log("Response Query Request\n");
 	}
@@ -149,19 +150,9 @@ void DLSiteHelperServer::ReplyText(Tufao::HttpServerResponse & response,const Tu
 	response.end(message.toLocal8Bit());
 }
 
-QString DLSiteHelperServer::GetAllOverlapWork()
+QString DLSiteHelperServer::GetAllOverlapWorksString()
 {
-	DataBase database;
-	std::map<std::string,std::set<std::string>> overlap_work;
-	mysql_query(&database.my_sql, "select Main,Sub from overlap;");
-	auto result = mysql_store_result(&database.my_sql);
-	if (mysql_errno(&database.my_sql))
-		LogError("%s\n", mysql_error(&database.my_sql));
-	MYSQL_ROW row;
-	//暂时认为没有多层的覆盖关系，即没有合集的合集/三个作品相同但每个作品的描述里只写了与一个重合的情况
-	while (row = mysql_fetch_row(result))
-		overlap_work[row[0]].insert(row[1]);
-	mysql_free_result(result);
+	auto overlap_work= GetAllOverlapWorks();
 	std::string ret="{";
 	for (auto& pair : overlap_work)
 		if(!pair.second.empty())
@@ -176,6 +167,44 @@ QString DLSiteHelperServer::GetAllOverlapWork()
 		ret.pop_back();
 	ret += "}";
 	return s2q(ret);
+}
+
+std::map<std::string, std::set<std::string>> DLSiteHelperServer::GetAllOverlapWorks()
+{
+	DataBase database;
+	std::map<std::string, std::set<std::string>> overlap_work;
+	//获得手动标记的覆盖关系
+	std::map<std::string, std::set<std::string>> base_edges;
+	mysql_query(&database.my_sql, "select Main,Sub from overlap;");
+	auto result = mysql_store_result(&database.my_sql);
+	if (mysql_errno(&database.my_sql))
+		LogError("%s\n", mysql_error(&database.my_sql));
+	MYSQL_ROW row;
+	while (row = mysql_fetch_row(result))
+		base_edges[row[0]].insert(row[1]);
+	mysql_free_result(result);
+	//推导出其它覆盖关系
+	overlap_work = base_edges;
+	for (auto& pair : overlap_work)
+	{
+		auto& ret = pair.second;
+		//对于每个work，基于base_edges宽搜
+		std::set<std::string> starts = ret;
+		std::set<std::string> next_starts;
+		do {
+			for (auto& s : starts)
+				if (base_edges.count(s))
+					for (auto& t : base_edges[s])
+						if (t != pair.first && !ret.count(t))
+						{
+							ret.insert(t);
+							next_starts.insert(t);
+						}
+			starts = next_starts;
+			next_starts.clear();
+		} while (!starts.empty());
+	}
+	return overlap_work;
 }
 
 QString DLSiteHelperServer::UpdateBoughtItems(const QByteArray & data)
@@ -209,7 +238,7 @@ QString DLSiteHelperServer::UpdateBoughtItems(const QByteArray & data)
 	return "Sucess";
 }
 
-QString DLSiteHelperServer::GetAllInvalidWork()
+QString DLSiteHelperServer::GetAllInvalidWorksString()
 {
 	std::set<std::string> invalid_work;
 	//覆盖的作品全部invalid的作品未必是invalid，因为可能有额外的内容
@@ -275,8 +304,10 @@ void DLSiteHelperServer::SyncLocalFileToDB()
 	QRegExp reg(WORK_NAME_EXP);
 	DataBase database;
 	std::set<std::string> ct;
-	std::set<std::string> eliminated_works;
-	{
+	std::set<std::string> not_expected_works;//接下来不应该出现在本地的作品
+	auto overlaps=GetAllOverlapWorks();
+	{//eliminated及其覆盖的作品不应当出现在本地
+		std::set<std::string> eliminated_works;
 		mysql_query(&database.my_sql, "select id from works where eliminated=1;");
 		auto result = mysql_store_result(&database.my_sql);
 		if (mysql_errno(&database.my_sql))
@@ -285,32 +316,48 @@ void DLSiteHelperServer::SyncLocalFileToDB()
 		while (row = mysql_fetch_row(result))
 			eliminated_works.insert(row[0]);
 		mysql_free_result(result);
-	}
-	cmd = "UPDATE works set downloaded=0;";
-	for(auto& dir: GetLocalFiles(DLConfig::local_dirs))
-	{
-		int pos = reg.indexIn(QFileInfo(dir).fileName());
-		if (pos > -1) {
-			std::string work_name = q2s(reg.cap(0));
-			if(eliminated_works.count(work_name))//eliminated的无论是否download或bought都删除
-			{
-				//downloaded最开始已经设成0了，此处不需要set
-				if (!QDir(dir).removeRecursively())
-					Log("Can't Remove %s\n", q2s(dir).c_str());
-				else
-					Log("Remove Eliminated: %s\n", q2s(dir).c_str());
-			}
-			else
-			{
-				cmd += "INSERT IGNORE INTO works(id) VALUES(\"" + work_name + "\");"
-					"UPDATE works SET downloaded = 1 WHERE id = \"" + work_name + "\"; ";
-				ct.insert(work_name);
-			}
-		}
-		if (cmd.length() > SQL_LENGTH_LIMIT)
-			database.SendQuery(cmd);
 
+		not_expected_works = eliminated_works;
+		for (auto& i : eliminated_works)
+			if (overlaps.count(i))
+				for (auto& j : overlaps[i])
+					if (!not_expected_works.count(j))
+						not_expected_works.insert(j);
 	}
+	//重置所有作品downloaded状态
+	cmd = "UPDATE works set downloaded=0;";
+	//依序遍历loacl_dirs,查找已下载的作品，如果下载了多个互相覆盖的作品，保留靠前的目录中的文件
+	for (auto& root_dir : DLConfig::local_dirs)
+		for (auto& dir : GetLocalFiles(QStringList{ root_dir }))
+		{
+			int pos = reg.indexIn(QFileInfo(dir).fileName());
+			if (pos > -1) {
+				std::string work_name = q2s(reg.cap(0));
+				if (not_expected_works.count(work_name))//删除不需要的
+				{
+					//downloaded最开始已经设成0了，此处不需要set
+					if (!QDir(dir).removeRecursively())
+						Log("Can't Remove %s\n", q2s(dir).c_str());
+					else
+						Log("Remove Eliminated: %s\n", q2s(dir).c_str());
+				}
+				else
+				{
+					//因为已经有该作品了，接下来的遍历中该作品及其覆盖作品都不再需要，如果遇到就删除
+					not_expected_works.insert(work_name);
+					if (overlaps.count(work_name))
+						for (auto& j : overlaps[work_name])
+							if (!not_expected_works.count(j))
+								not_expected_works.insert(j);
+
+					cmd += "INSERT IGNORE INTO works(id) VALUES(\"" + work_name + "\");"
+						"UPDATE works SET downloaded = 1 WHERE id = \"" + work_name + "\"; ";
+					ct.insert(work_name);
+				}
+			}
+			if (cmd.length() > SQL_LENGTH_LIMIT)
+				database.SendQuery(cmd);
+		}
 	if (cmd.length() > 0)
 		database.SendQuery(cmd);
 
@@ -370,6 +417,7 @@ QStringList DLSiteHelperServer::GetLocalFiles(const QStringList& root)
 }
 
 void DLSiteHelperServer::EliminateOTMWorks() {
+	//otomei女性向作品
 	auto ids=client.GetOTMWorks(GetLocalFiles(DLConfig::local_dirs));
 	std::string cmd = "";
 	DataBase database;

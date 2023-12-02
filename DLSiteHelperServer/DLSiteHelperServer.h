@@ -14,15 +14,16 @@ class DLSiteHelperServer:public Tufao::HttpServer
 public:
 	DLSiteHelperServer(QObject* parent);
 	~DLSiteHelperServer();
-	static QRegExp GetWorkNameExp();
+	static QRegExp GetWorkNameExpSep();
 protected:
 	void HandleRequest(Tufao::HttpServerRequest &request, Tufao::HttpServerResponse &response);
 	void ReplyText(Tufao::HttpServerResponse & response, const Tufao::HttpResponseStatus&status, const QString & message);
 	
-	QString GetAllInvalidWork();
-	QString GetAllOverlapWork();
+	QString GetAllInvalidWorksString();
+	QString GetAllOverlapWorksString();
 	QString UpdateBoughtItems(const QByteArray& data);
 
+	std::map<std::string, std::set<std::string>> GetAllOverlapWorks();
 	void SyncLocalFileToDB();
 	void DownloadAll(const QByteArray& cookie, const QByteArray& user_agent);
 	void RenameLocal();

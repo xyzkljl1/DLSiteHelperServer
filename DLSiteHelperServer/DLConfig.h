@@ -7,6 +7,7 @@ public:
 	static bool ARIA2_Mode;
 
 	//存储目录，位于local_dirs的文件夹视作已下载
+	//有序！当不同目录存在相互覆盖的work时，优先保留靠前的目录中的文件
 	static QStringList local_dirs;
 	//位于local_tmp_dirs的文件仅用于重命名
 	static QStringList local_tmp_dirs;
