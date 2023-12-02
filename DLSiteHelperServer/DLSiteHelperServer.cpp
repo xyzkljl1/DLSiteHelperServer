@@ -255,31 +255,13 @@ QString DLSiteHelperServer::GetAllInvalidWorksString()
 		mysql_free_result(result);
 	}
 	{//被invalid作品覆盖的作品也是invalid
-		DataBase database;
-		mysql_query(&database.my_sql, "select Main,Sub from overlap;");
-		auto result = mysql_store_result(&database.my_sql);
-		if (mysql_errno(&database.my_sql))
-			LogError("%s\n", mysql_error(&database.my_sql));
-		//覆盖关系是有多层的，例如一个作品有中日英版，中英版的介绍里各自只写了与日文版相通，然后买了中文版，就构成了一个链条
-		std::vector<std::pair<std::string, std::string>> relationship;
-		{
-			MYSQL_ROW row;
-			while (row = mysql_fetch_row(result))
-				relationship.push_back({ row[0],row[1] });
-			mysql_free_result(result);
-		}
-		int tmp = 0;
-		do//一直循环到找不到新的覆盖关系为止
-		{
-			tmp = 0;
-			for (auto & pair : relationship)
-				if (invalid_work.count(pair.first) && !invalid_work.count(pair.second))
-				{
-					invalid_work.insert(pair.second);
-					tmp++;
-				}
-		}
-		while (tmp);
+		auto overlaps = GetAllOverlapWorks();
+		auto tmp = invalid_work;
+		for (auto& i : tmp)
+			if (overlaps.count(i))
+				for (auto& j : overlaps[i])
+					if (!invalid_work.count(j))
+						invalid_work.insert(j);
 	}
 	{//最后加入specialEliminated，SpecialEliminate的作品不会令覆盖的作品变为invalid所以要放在后面加入
 		DataBase database;
