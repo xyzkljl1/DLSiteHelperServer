@@ -298,7 +298,6 @@ void DLSiteHelperServer::SyncLocalFileToDB()
 		while (row = mysql_fetch_row(result))
 			eliminated_works.insert(row[0]);
 		mysql_free_result(result);
-
 		not_expected_works = eliminated_works;
 		for (auto& i : eliminated_works)
 			if (overlaps.count(i))
@@ -361,14 +360,36 @@ void DLSiteHelperServer::DownloadAll(const QByteArray&cookie, const QByteArray& 
 	QStringList works;
 	{
 		DataBase database;
-		mysql_query(&database.my_sql, "select id from works where downloaded=0 and bought=1 and eliminated=0;");
-		auto result = mysql_store_result(&database.my_sql);
-		if (mysql_errno(&database.my_sql))
-			LogError("%s\n", mysql_error(&database.my_sql));
-		MYSQL_ROW row;
-		while (row = mysql_fetch_row(result))
-			works.push_back(QString::fromLocal8Bit(row[0]));
-		mysql_free_result(result);
+		std::set<std::string> not_expected_works;//不需要下载的
+		{//eliminated/downloaded及其覆盖的作品不需要下载
+			auto overlaps = GetAllOverlapWorks();
+			std::set<std::string> eliminated_works;
+			mysql_query(&database.my_sql, "select id from works where eliminated=1 or downloaded=1;");
+			auto result = mysql_store_result(&database.my_sql);
+			if (mysql_errno(&database.my_sql))
+				LogError("%s\n", mysql_error(&database.my_sql));
+			MYSQL_ROW row;
+			while (row = mysql_fetch_row(result))
+				eliminated_works.insert(row[0]);
+			mysql_free_result(result);
+			not_expected_works = eliminated_works;
+			for (auto& i : eliminated_works)
+				if (overlaps.count(i))
+					for (auto& j : overlaps[i])
+						if (!not_expected_works.count(j))
+							not_expected_works.insert(j);
+		}
+		{
+			mysql_query(&database.my_sql, "select id from works where downloaded=0 and bought=1 and eliminated=0;");
+			auto result = mysql_store_result(&database.my_sql);
+			if (mysql_errno(&database.my_sql))
+				LogError("%s\n", mysql_error(&database.my_sql));
+			MYSQL_ROW row;
+			while (row = mysql_fetch_row(result))
+				if (!not_expected_works.count(row[0]))
+					works.push_back(QString::fromLocal8Bit(row[0]));
+			mysql_free_result(result);
+		}
 	}
 	client.StartDownload(cookie,user_agent,works);
 }
