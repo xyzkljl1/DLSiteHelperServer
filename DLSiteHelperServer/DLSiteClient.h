@@ -18,6 +18,8 @@ public:
 	//线程不安全，只能从主线程调用
 	void StartDownload(const QByteArray& cookies, const QByteArray& user_agent,const QStringList& works);
 	void StartRename(const QStringList& files);
+
+	QStringList GetTranslationWorks(const QString& id);
 	QStringList GetOTMWorks(const QStringList& works);
 	static Task TryDownloadWork(std::string id, cpr::Cookies cookie, cpr::UserAgent user_agent, bool only_refresh_cookie);
 protected:
@@ -25,6 +27,8 @@ protected:
 	void RenameThread(QStringList local_files);
 	void DownloadThread(QStringList works,cpr::Cookies cookie,cpr::UserAgent user_agent);
 	static bool RenameFile(const QString & file, const QString & id, const QString & work_name);
+
+	static QJsonObject GetWorkInfoFromDLSiteAPI(cpr::Session& session,const QString& id);
 	static WorkType GetWorkTypeFromWeb(const std::string& page, const std::string&id);	
 	static QString unicodeToString(const QString& str);
 	bool Extract(const QString& file_name,const QString& dir);

@@ -27,6 +27,8 @@ DLSiteHelperServer::DLSiteHelperServer(QObject* parent):Tufao::HttpServer(parent
 	connect(&daily_timer, &QTimer::timeout, this, &DLSiteHelperServer::SyncLocalFileToDB);
 	//排除本地女性向作品,由于不需要经常使用，直接改代码调用
 	//EliminateOTMWorks();
+	//排除多语言版本，同上直接改代码调用
+	//EliminateTranslationWorks();
 }
 
 DLSiteHelperServer::~DLSiteHelperServer()
@@ -36,6 +38,21 @@ DLSiteHelperServer::~DLSiteHelperServer()
 QRegExp DLSiteHelperServer::GetWorkNameExpSep()
 {
 	return QRegExp(WORK_NAME_EXP_SEP);
+}
+
+QString DLSiteHelperServer::GetIDFromDirName(QString dir)
+{
+	auto reg = GetWorkNameExpSep();
+	reg.indexIn(dir);
+	QString id = reg.cap(0);
+	//检查id格式，因为可能通过其它来源下载的文件格式不正确(没有补0)
+	QString num_postfix = reg.cap(2);
+	if (num_postfix.length() % 2 != 0)//奇数位数字的前面补0
+	{
+		num_postfix = "0" + num_postfix;
+		id = reg.cap(1) + num_postfix;
+	}
+	return id;
 }
 
 void DLSiteHelperServer::HandleRequest(Tufao::HttpServerRequest & request, Tufao::HttpServerResponse & response)
@@ -307,12 +324,12 @@ void DLSiteHelperServer::SyncLocalFileToDB()
 	}
 	//重置所有作品downloaded状态
 	cmd = "UPDATE works set downloaded=0;";
-	//依序遍历loacl_dirs,查找已下载的作品，如果下载了多个互相覆盖的作品，保留靠前的目录中的文件
+	//依序遍历local_dirs,查找已下载的作品，如果下载了多个互相覆盖的作品，保留靠前的目录中的文件
 	for (auto& root_dir : DLConfig::local_dirs)
 		for (auto& dir : GetLocalFiles(QStringList{ root_dir }))
 		{
-			int pos = reg.indexIn(QFileInfo(dir).fileName());
-			if (pos > -1) {
+			std::string id = q2s(GetIDFromDirName(QFileInfo(dir).fileName()));
+			if (!id.empty()) {
 				std::string work_name = q2s(reg.cap(0));
 				if (not_expected_works.count(work_name))//删除不需要的
 				{
@@ -397,6 +414,37 @@ void DLSiteHelperServer::DownloadAll(const QByteArray&cookie, const QByteArray& 
 void DLSiteHelperServer::RenameLocal()
 {
 	client.StartRename(GetLocalFiles(DLConfig::local_dirs + DLConfig::local_tmp_dirs));
+}
+void DLSiteHelperServer::EliminateTranslationWorks()
+{
+	DataBase database;
+	std::string cmd;
+	int ct1 = 0;
+	int ct2 = 0;
+	for(const auto&file: GetLocalFiles(DLConfig::local_dirs))
+		if (QFileInfo(file).fileName().contains(s2q("中文版")))//大部分翻译作品名字带"中文版"，其它的忽略
+		{
+			QString id=DLSiteHelperServer::GetIDFromDirName(file);
+			//id = "RJ01018121";
+			QStringList translations=client.GetTranslationWorks(id);
+			ct1 += translations.count() > 1 ? 1 : 0;
+			ct2 += translations.count()>1?translations.count():0;
+			//两两标记为双向覆盖
+			for(int i=0;i<translations.count();++i)
+				for (int j = i + 1; j < translations.count(); ++j)
+				{
+					cmd+=q2s("INSERT IGNORE INTO works(id) VALUES(\"" + translations[i] + "\");"
+						"INSERT IGNORE INTO works(id) VALUES(\"" + translations[j] + "\");"
+						"INSERT IGNORE INTO overlap VALUES(\"" + translations[i] + "\",\"" + translations[j] + "\");"
+						"INSERT IGNORE INTO overlap VALUES(\"" + translations[j] + "\",\"" + translations[i] + "\");"
+						);
+				}
+			if (cmd.length() > SQL_LENGTH_LIMIT)
+				database.SendQuery(cmd);
+		}
+	if (cmd.length() > 0)
+		database.SendQuery(cmd);
+	Log("Eliminate Translations Done.Marked %d group/%d works.",ct1,ct2);
 }
 
 //获得指定根目录下所有work的路径

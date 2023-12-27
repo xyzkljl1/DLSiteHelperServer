@@ -5,6 +5,7 @@
 #include <QCoreApplication>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonArray>
 #include <QMetaType>
 #include "cpr/cpr.h"
 #include "DLSiteHelperServer.h"
@@ -161,45 +162,44 @@ void DLSiteClient::RenameThread(QStringList local_files)
 	session.SetRedirect(true);
 
 	int ct = 0;
-	auto reg = DLSiteHelperServer::GetWorkNameExpSep();
 	for (const auto& file : local_files)
 	{
-		reg.indexIn(file);
-		QString id = reg.cap(0);
+		QString id = DLSiteHelperServer::GetIDFromDirName(file);
+		auto work_info=GetWorkInfoFromDLSiteAPI(session, id);
+		if (work_info.isEmpty())
+			continue;
+		if (!work_info.contains("work_name"))
 		{
-			//检查id格式，因为可能通过其它来源下载的文件格式不正确(没有补0)
-			QString num_postfix = reg.cap(2);
-			if (num_postfix.length() % 2 != 0)//奇数位数字的前面补0
-			{
-				num_postfix = "0" + num_postfix;
-				id = reg.cap(1) + num_postfix;
-			}
+			LogError("Cant Find Name\n");
+			continue;
 		}
-		std::string url = Format("https://www.dlsite.com/maniax/product/info/ajax?product_id=%s&cdn_cache_min=0", q2s(id).c_str());
-		session.SetUrl(url);
-		auto res = session.Get();
-		if (res.status_code == 200)
-		{
-			QJsonParseError error;
-			QJsonDocument doc = QJsonDocument::fromJson(res.text.c_str(), &error);
-			if (error.error != QJsonParseError::NoError || !doc.object().contains(id))
-			{
-				LogError("Cant Parse Json\n");
-				continue;
-			}
-			auto object = doc.object().value(id).toObject();
-			if (!object.contains("work_name"))
-			{
-				LogError("Cant Find Name\n");
-				continue;
-			}
-			ct += RenameFile(file, id, object.value("work_name").toString());
-		}
+		ct += RenameFile(file, id, work_info.value("work_name").toString());
 	}
 	running = false;
 	Log("Rename Done\n");
 }
 
+QJsonObject DLSiteClient::GetWorkInfoFromDLSiteAPI(cpr::Session& session,const QString& id) {
+	QJsonObject result;
+	std::string url = Format("https://www.dlsite.com/maniax/product/info/ajax?product_id=%s&cdn_cache_min=0", q2s(id).c_str());
+	session.SetUrl(url);
+	auto response = session.Get();
+	if (response.status_code == 200)
+	{
+		QJsonParseError error;
+		QJsonDocument doc = QJsonDocument::fromJson(response.text.c_str(), &error);
+		if (error.error != QJsonParseError::NoError || !doc.object().contains(id))
+		{
+			LogError("Cant Parse Json %s\n",q2s(id).c_str());
+			return result;
+		}
+		return doc.object().value(id).toObject();
+	}
+	else {
+		LogError("Cant Get work info:%s\n", q2s(id).c_str());
+		return result;
+	}
+}
 void DLSiteClient::DownloadThread(QStringList works,cpr::Cookies cookie,cpr::UserAgent user_agent)
 {
 	std::vector<Task> task_list;
@@ -420,6 +420,124 @@ void DLSiteClient::StartDownload(const QByteArray& _cookies, const QByteArray& _
 	std::thread thread(&DLSiteClient::DownloadThread, this,works,cookies, cpr::UserAgent(_user_agent.toStdString()));
 	thread.detach();
 }
+
+QStringList DLSiteClient::GetTranslationWorks(const QString& work_id)
+{
+	QStringList ret;
+	cpr::Session session;//不需要cookie
+	session.SetVerifySsl(cpr::VerifySsl{ false });
+	session.SetProxies(cpr::Proxies{ {std::string("https"), DLConfig::REQUEST_PROXY} });
+	session.SetHeader(cpr::Header{ {"user-agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"} });
+	session.SetRedirect(true);
+	/*
+	* 翻译作品分两种：独立，组合
+	* 其中"组合"的translation_info的is_parent/is_child为真，parent_workno/child_worknos不为空，形如
+	(RJ01018122子)"translation_info": {
+	  "is_translation_agree": false,
+	  "is_volunteer": false,
+	  "is_original": false,
+	  "is_parent": false,
+	  "is_child": true,
+	  "is_translation_bonus_child": false,
+	  "original_workno": "RJ380627",
+	  "parent_workno": "RJ01018121",
+	  "child_worknos": [],
+	  "lang": "CHI_HANT",
+	  "production_trade_price_rate": 0,
+	  "translation_bonus_langs": []
+	}
+	(RJ01018121父)"translation_info": {
+	  "is_translation_agree": false,
+	  "is_volunteer": false,
+	  "is_original": false,
+	  "is_parent": true,
+	  "is_child": false,
+	  "is_translation_bonus_child": false,
+	  "original_workno": "RJ380627",
+	  "parent_workno": null,
+	  "child_worknos": [ "RJ01018122" ],
+	  "lang": "CHI_HANT",
+	  "production_trade_price_rate": 0,
+	  "translation_bonus_langs": []
+	},
+	目前只见过一层组合关系，且都是一父一子
+	(一父一子时)组合作品的父、子各有一个RJ号，使用两个RJ号均能访问到该翻译作品的网页，但是子作品的url会被重定向至形如maniax/work/=/product_id/{父RJ号}.html/?translation={子RJ号}
+	由于父作品也有lang，推测一个父作品的所有子作品都是同一语言
+	因此视作所有父子两两等价(即双向覆盖)
+	*
+	* 多语言版本在dl_count_items中形如
+	"dl_count_items": [
+	  {
+		"workno": "RJ380627",
+		"edition_id": 9798,
+		"edition_type": "language",
+		"display_order": 1,
+		"label": "\u65e5\u672c\u8a9e",
+		"dl_count": "2108",
+		"display_label": "\u65e5\u672c\u8a9e"
+	  },
+	  {
+		"workno": "RJ01018121",
+		"edition_id": 9798,
+		"edition_type": "language",
+		"display_order": 7,
+		"label": "\u7e41\u4f53\u4e2d\u6587",
+		"dl_count": 85,
+		"display_label": "\u7e41\u4f53\u4e2d\u6587"
+	  }
+	]
+	其中总是仅包含独立作品和父作品，因此需要另外查询子作品
+	包含自己
+	edition_type似乎总是为language
+	本体/追加voice/完全版/无料版等信息似乎不会出现在此处
+	因此dl_count_items包含的作品及其子作品均视作两两等价
+	*/
+	QStringList parent_works;
+	//找到所有dl_count_items
+	{
+		auto work_info = GetWorkInfoFromDLSiteAPI(session, work_id);
+		//if (work_info.isEmpty())//如果work_info.isEmpty()那么!work_info.contains("dl_count_items")一定为真
+			//return ret;
+		if (!work_info.contains("dl_count_items"))
+			return ret;
+		for (const QJsonValue& item : work_info.value("dl_count_items").toArray())
+			if(item.isObject()&&!item.toObject().empty())
+			{
+				QJsonObject object=item.toObject();
+				QString type = object.value("edition_type").toString();
+				if (type != "language")
+				{
+					throw "Unknown Situation";
+				}
+				parent_works += object.value("workno").toString();
+			}
+	}
+	//找到所有dl_count_items包含的子作品
+	QStringList translation_works = parent_works;
+	for (const auto& subwork_id : parent_works)
+	{
+		auto work_info = GetWorkInfoFromDLSiteAPI(session, subwork_id);
+		//if (work_info.isEmpty())
+			//return ret;
+		if (!work_info.contains("translation_info"))
+			return ret;
+		auto translation_info = work_info.value("translation_info").toObject();
+		if (translation_info.empty())
+			continue;
+		if (!translation_info.value("is_parent").toBool())//独立作品
+			continue;
+		if (translation_info.value("is_child").toBool())//不应该出现子作品
+		{
+			throw "Unknown Situation";
+			return ret;
+		}
+		for (const QJsonValue& item : translation_info.value("child_worknos").toArray())
+			if(item.isString()&&!translation_works.contains(item.toString()))
+				translation_works += item.toString();
+	}
+	return translation_works;
+}
+
 void DLSiteClient::StartRename(const QStringList& _files)
 {
 	if (this->running)
@@ -427,20 +545,12 @@ void DLSiteClient::StartRename(const QStringList& _files)
 	//因为都是在主线程运行，所以这里不需要用原子操作
 	running = true;
 	QStringList local_files;
-	auto reg = DLSiteHelperServer::GetWorkNameExpSep();
 	for (const auto& file : _files)
 	{
-		reg.indexIn(file);
-		QString id = reg.cap(0);
+		QString id = DLSiteHelperServer::GetIDFromDirName(file);
 		if (id.isEmpty())
 			continue;
-		QString num_postfix = reg.cap(2);
-		//检查id格式，因为可能通过其它来源下载的文件格式不正确(没有补0)
-		if (num_postfix.length() % 2 != 0)//奇数位数字的前面需要补0
-			local_files.push_back(file);
-		//检查是否已经重命名过
-		else if(QDir(file).dirName().size()<id.size()+2)
-			local_files.push_back(file);
+		local_files.push_back(file);
 	}
 	std::thread thread(&DLSiteClient::RenameThread,this,local_files);
 	thread.detach();
@@ -456,20 +566,9 @@ QStringList DLSiteClient::GetOTMWorks(const QStringList& local_files)
 	session.SetRedirect(true);
 
 	int ct = 0;
-	auto reg = DLSiteHelperServer::GetWorkNameExpSep();
 	for (const auto& file : local_files)
 	{
-		reg.indexIn(file);
-		QString id = reg.cap(0);
-		{
-			//检查id格式，因为可能通过其它来源下载的文件格式不正确(没有补0)
-			QString num_postfix = reg.cap(2);
-			if (num_postfix.length() % 2 != 0)//奇数位数字的前面补0
-			{
-				num_postfix = "0" + num_postfix;
-				id = reg.cap(1) + num_postfix;
-			}
-		}
+		QString id = DLSiteHelperServer::GetIDFromDirName(file);
 		std::string url = Format("https://www.dlsite.com/maniax/work/=/product_id/%s.html", q2s(id).c_str());
 		session.SetUrl(cpr::Url{ url });
 		auto res = session.Get();
