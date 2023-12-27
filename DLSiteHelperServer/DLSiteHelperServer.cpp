@@ -300,7 +300,6 @@ QString DLSiteHelperServer::GetAllInvalidWorksString()
 void DLSiteHelperServer::SyncLocalFileToDB()
 {
 	std::string cmd;
-	QRegExp reg(WORK_NAME_EXP);
 	DataBase database;
 	std::set<std::string> ct;
 	std::set<std::string> not_expected_works;//接下来不应该出现在本地的作品
@@ -330,8 +329,7 @@ void DLSiteHelperServer::SyncLocalFileToDB()
 		{
 			std::string id = q2s(GetIDFromDirName(QFileInfo(dir).fileName()));
 			if (!id.empty()) {
-				std::string work_name = q2s(reg.cap(0));
-				if (not_expected_works.count(work_name))//删除不需要的
+				if (not_expected_works.count(id))//删除不需要的
 				{
 					//downloaded最开始已经设成0了，此处不需要set
 					if (!QDir(dir).removeRecursively())
@@ -342,15 +340,15 @@ void DLSiteHelperServer::SyncLocalFileToDB()
 				else
 				{
 					//因为已经有该作品了，接下来的遍历中该作品及其覆盖作品都不再需要，如果遇到就删除
-					not_expected_works.insert(work_name);
-					if (overlaps.count(work_name))
-						for (auto& j : overlaps[work_name])
+					not_expected_works.insert(id);
+					if (overlaps.count(id))
+						for (auto& j : overlaps[id])
 							if (!not_expected_works.count(j))
 								not_expected_works.insert(j);
 
-					cmd += "INSERT IGNORE INTO works(id) VALUES(\"" + work_name + "\");"
-						"UPDATE works SET downloaded = 1 WHERE id = \"" + work_name + "\"; ";
-					ct.insert(work_name);
+					cmd += "INSERT IGNORE INTO works(id) VALUES(\"" + id + "\");"
+						"UPDATE works SET downloaded = 1 WHERE id = \"" + id + "\"; ";
+					ct.insert(id);
 				}
 			}
 			if (cmd.length() > SQL_LENGTH_LIMIT)
