@@ -21,7 +21,7 @@ public:
 
 	QStringList GetTranslationWorks(const QString& id);
 	QStringList GetOTMWorks(const QStringList& works);
-	static Task TryDownloadWork(std::string id, cpr::Cookies cookie, cpr::UserAgent user_agent, bool only_refresh_cookie);
+	static Task TryDownloadWork(std::string id, cpr::Cookies cookie, cpr::UserAgent user_agent);
 protected:
 	//以防万一直接传值
 	void RenameThread(QStringList local_files);

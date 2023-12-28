@@ -213,7 +213,7 @@ bool Aria2Downloader::CheckTaskStatus(bool init)
 		if (update_index.empty())
 			continue;
 		if (!init)//如果不是第一次创建任务，失效的任务可能是由于cookie过期，需要重新获取
-			task.cookie = DLSiteClient::TryDownloadWork(task.id, main_cookie, user_agent, true).cookie;
+			task.cookies = DLSiteClient::TryDownloadWork(task.id, main_cookie, user_agent).cookies;
 		//更新子任务
 		std::string path = task.GetDownloadDir();
 		if (!QDir(QString::fromLocal8Bit(path.c_str())).exists())
@@ -230,7 +230,7 @@ bool Aria2Downloader::CheckTaskStatus(bool init)
 					path.c_str(),
 					task.file_names[i].c_str(),
 					user_agent.c_str(),
-					task.cookie.c_str());
+					task.cookies[i].c_str());
 			session.SetBody(cpr::Body{ data.c_str() });
 			auto response = session.Post();
 			if (response.status_code != 200)

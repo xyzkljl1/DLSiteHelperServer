@@ -26,10 +26,10 @@ struct Task {
 	WorkType type = UNKNOWN;//作品的类型
 	std::set<std::string> download_ext;//下载的文件(解压前)的格式
 	std::vector<std::string> urls;
+	std::vector<std::string> cookies;
 	std::vector<std::string> file_names;//下载的文件的文件名
 	QString work_name;//作品名
 	bool ready = false;
-	std::string cookie;
 	std::string GetDownloadDir() const;
 	std::string GetDownloadPath(int i) const;
 	std::string GetExtractPath() const;

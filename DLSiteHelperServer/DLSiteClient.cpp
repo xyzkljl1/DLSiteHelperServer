@@ -206,7 +206,7 @@ void DLSiteClient::DownloadThread(QStringList works,cpr::Cookies cookie,cpr::Use
 	std::map<std::string, std::future<Task>> futures;
 	QStringList tmp;
 	for (const auto& id : works)
-		futures[q2s(id)] = std::async(&TryDownloadWork, q2s(id), cookie,user_agent,false);
+		futures[q2s(id)] = std::async(&TryDownloadWork, q2s(id), cookie,user_agent);
 	for (auto& pair : futures)//应该用whenall,但是并没有
 		task_list.push_back(pair.second.get());
 	//有时会下载失败403，疑似是因为cookie失效，在chrome里手动尝试下载任意文件可解
@@ -220,7 +220,7 @@ void DLSiteClient::DownloadThread(QStringList works,cpr::Cookies cookie,cpr::Use
 	else
 		Log("Fetch Done,Download Begin\n");
 }
-Task DLSiteClient::TryDownloadWork(std::string id,cpr::Cookies cookie, cpr::UserAgent user_agent, bool only_refresh_cookie) {
+Task DLSiteClient::TryDownloadWork(std::string id,cpr::Cookies cookie, cpr::UserAgent user_agent) {
 	Task task;
 	task.id = id;
 	cpr::Session session;
@@ -245,14 +245,17 @@ Task DLSiteClient::TryDownloadWork(std::string id,cpr::Cookies cookie, cpr::User
 		return task;
 	//获取真实连接
 	session.SetRedirect(false);//不能使用自动重定向，因为需要记录重定向前的set-cookie以及判别是否分段下载
+	//2023-12：maniax/download/=/product_id/%s.html不再能对多文件重定向，多文件需要直接访问maniax/download/split/=/product_id/%s.html
+	//2023-12：分段下载时变为每个文件必须单独使用一个cookie,cookie决定下载哪个文件，例如使用part1的url+part2的cookie时下载的是第二个文件
 	std::string url = Format("https://www.dlsite.com/maniax/download/=/product_id/%s.html", id.c_str());
+	std::string current_cookie;
 	int idx = 0;//当前段数，0表示单段/多段的总下载页，1~n表示多段下载的第1~n页
 	while (true) {
 		session.SetUrl(cpr::Url{ url });
 		auto res = session.Head();
 		if (res.header.count("set-cookie"))
 		{
-			task.cookie = "";
+			current_cookie = "";
 			cpr::Cookies download_cookie = cookie;
 			QString new_cookie = res.header["set-cookie"].c_str();
 			for (auto&pair : new_cookie.split(';'))
@@ -265,17 +268,23 @@ Task DLSiteClient::TryDownloadWork(std::string id,cpr::Cookies cookie, cpr::User
 				}
 			}
 			for (auto&pair : download_cookie)
-				task.cookie += (pair.first + "=" + pair.second + "; ").c_str();
-			if (only_refresh_cookie)
-				return task;
+				current_cookie += (pair.first + "=" + pair.second + "; ").c_str();
 		}
 		if (res.status_code == 302)
 		{
-			if (res.header["location"] == "Array")//分段下载，此时初始网址不一样(为https://www.dlsite.com/maniax/download/split/=/product_id/%1.html),试图用单段下载的url访问时会重定向到"Array"
+			//if (res.header["location"] == "Array")//分段下载，此时初始网址不一样(为https://www.dlsite.com/maniax/download/split/=/product_id/%1.html),试图用单段下载的url访问时会重定向到"Array"
 												  //没必要获取总下载页，直接从第一段开始下载
-				url = Format("https://www.dlsite.com/maniax/download/=/number/%d/product_id/%s.html",++idx, id.c_str());
-			else//一般重定向
-				url = res.header["location"];
+			//	url = Format("https://www.dlsite.com/maniax/download/=/number/%d/product_id/%s.html",++idx, id.c_str());
+			//else
+			url = res.header["location"];//一般重定向
+		}
+		else if (res.status_code == 500) {
+			//如果正在访问初始下载页面且获得500，说明是分段下载，此时初始网址不一样(为https://www.dlsite.com/maniax/download/split/=/product_id/%1.html)
+			//没必要获取总下载页，直接从第一段开始下载
+			if (url.find("https://www.dlsite.com/maniax/download/=/product_id/") != std::string::npos)
+				url = Format("https://www.dlsite.com/maniax/download/=/number/%d/product_id/%s.html", ++idx, id.c_str());
+			else
+				break;
 		}
 		else if (res.status_code == 200)
 		{
@@ -304,6 +313,7 @@ Task DLSiteClient::TryDownloadWork(std::string id,cpr::Cookies cookie, cpr::User
 
 				task.file_names.push_back(file_name);
 				task.urls.push_back(url);
+				task.cookies.push_back(current_cookie);
 				if (!ext.empty())
 					task.download_ext.insert(ext);
 
@@ -550,7 +560,8 @@ void DLSiteClient::StartRename(const QStringList& _files)
 		QString id = DLSiteHelperServer::GetIDFromDirName(file);
 		if (id.isEmpty())
 			continue;
-		local_files.push_back(file);
+		if (QDir(file).dirName().size() < id.size() + 2)
+			local_files.push_back(file);
 	}
 	std::thread thread(&DLSiteClient::RenameThread,this,local_files);
 	thread.detach();
