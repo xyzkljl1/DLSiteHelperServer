@@ -302,7 +302,9 @@ void DLSiteHelperServer::SyncLocalFileToDB()
 	std::string cmd;
 	DataBase database;
 	std::set<std::string> overlapped_works;//被已下载/已排除作品覆盖的作品
-	std::map<std::string,QString> downloaded_works;//已下载作品，id-dir
+	std::set<std::string> downloaded_works;//已下载作品
+	std::map<std::string, QString> currentdir_downloaded_works;//当前目录的已下载作品，id-dir
+
 	auto overlaps=GetAllOverlapWorks();
 	{//获取eliminated及其覆盖的作品
 		std::set<std::string> eliminated_works;
@@ -323,14 +325,19 @@ void DLSiteHelperServer::SyncLocalFileToDB()
 	}
 	//依序遍历local_dirs,查找已下载的作品去重，如果下载了多个互相覆盖的作品，保留靠前的目录中的文件
 	for (auto& root_dir : DLConfig::local_dirs)
+	{
+		currentdir_downloaded_works.clear();
 		for (auto& dir : GetLocalFiles(QStringList{ root_dir }))
 		{
 			std::string id = q2s(GetIDFromDirName(QFileInfo(dir).fileName()));
-			if(id.empty())
+			if (id.empty())
 				continue;
-			if (downloaded_works.count(id) || overlapped_works.count(id))//删除不需要的
+			if (downloaded_works.count(id) || overlapped_works.count(id))
 			{
-				//downloaded最开始已经设成0了，此处不需要set
+				//删除不需要的
+				//按目录优先级遍历，如果作品覆盖了同目录/低优先级目录的作品则删除被覆盖的作品
+				//不能因低优先级目录的作品的删掉高优先级目录的作品，防止一个收藏作品因为新下载了一个合集就被从收藏文件夹里移除
+				//同目录覆盖作品会因为遍历顺序漏掉一部分，例如A单向覆盖B，先遍历B再遍历A，则B不会在此处被删除，在下方补充判断currentdir_downloaded_works
 				if (!QDir(dir).removeRecursively())
 					Log("Can't Remove %s\n", q2s(dir).c_str());
 				else
@@ -338,33 +345,38 @@ void DLSiteHelperServer::SyncLocalFileToDB()
 			}
 			else
 			{
-				downloaded_works[id]=dir;
+				downloaded_works.insert(id);
+				currentdir_downloaded_works[id] = dir;
 				//检查该作品覆盖的作品
 				if (overlaps.count(id))
 					for (auto& sub_id : overlaps[id])
 					{
 						if (sub_id == id)
 							continue;
-						if (downloaded_works.count(sub_id))//如果覆盖了已遍历的作品，则把之前的删除(该作品进入了该else说明两者不是双向覆盖，而是该作品单向覆盖之前的作品)
+						//加入overlapped_works
+						if (!overlapped_works.count(sub_id))
+							overlapped_works.insert(sub_id);
+						//如果覆盖了同目录下其它作品，则把之前的作品删除(该作品进入了该if说明两者不是双向覆盖，而是该作品单向覆盖之前的作品)
+						if (currentdir_downloaded_works.count(sub_id))
 						{
-							if (!QDir(downloaded_works[sub_id]).removeRecursively())
-								Log("Can't Remove %s\n", q2s(downloaded_works[sub_id]).c_str());
+							if (!QDir(currentdir_downloaded_works[sub_id]).removeRecursively())
+								Log("Can't Remove %s\n", q2s(currentdir_downloaded_works[sub_id]).c_str());
 							else
-								Log("Remove Eliminated: %s\n", q2s(downloaded_works[sub_id]).c_str());
+								Log("Remove Eliminated: %s\n", q2s(currentdir_downloaded_works[sub_id]).c_str());
+							currentdir_downloaded_works.erase(sub_id);
 							downloaded_works.erase(sub_id);
 						}
-						if(!overlapped_works.count(sub_id))//加入overlapped_works
-							overlapped_works.insert(sub_id);
 					}
 			}
 		}
+
+	}
 	//downloaded写入数据库
 	{
 		//重置所有作品downloaded状态
 		cmd = "UPDATE works set downloaded=0;";
-		for (const auto& pair : downloaded_works)
+		for (const auto& id : downloaded_works)
 		{
-			std::string id = pair.first;
 			cmd += "INSERT IGNORE INTO works(id) VALUES(\"" + id + "\");"
 				"UPDATE works SET downloaded = 1 WHERE id = \"" + id + "\"; ";
 			if (cmd.length() > SQL_LENGTH_LIMIT)
