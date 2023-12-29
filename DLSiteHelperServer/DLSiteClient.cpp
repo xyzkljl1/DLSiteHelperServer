@@ -165,7 +165,7 @@ void DLSiteClient::RenameThread(QStringList local_files)
 	for (const auto& file : local_files)
 	{
 		QString id = DLSiteHelperServer::GetIDFromDirName(file);
-		auto work_info=GetWorkInfoFromDLSiteAPI(session, id);
+		auto work_info=GetWorkInfoFromDLSiteAPI(session, id).second;
 		if (work_info.isEmpty())
 			continue;
 		if (!work_info.contains("work_name"))
@@ -179,27 +179,28 @@ void DLSiteClient::RenameThread(QStringList local_files)
 	Log("Rename Done\n");
 }
 
-QJsonObject DLSiteClient::GetWorkInfoFromDLSiteAPI(cpr::Session& session,const QString& id) {
-	QJsonObject result;
+QPair<QString,QJsonObject> DLSiteClient::GetWorkInfoFromDLSiteAPI(cpr::Session& session, const QString& id) {
 	std::string url = Format("https://www.dlsite.com/maniax/product/info/ajax?product_id=%s&cdn_cache_min=0", q2s(id).c_str());
 	session.SetUrl(url);
 	auto response = session.Get();
 	if (response.status_code == 200)
 	{
 		QJsonParseError error;
+		QString text = s2q(response.text);
 		QJsonDocument doc = QJsonDocument::fromJson(response.text.c_str(), &error);
 		if (error.error != QJsonParseError::NoError || !doc.object().contains(id))
 		{
-			LogError("Cant Parse Json %s\n",q2s(id).c_str());
-			return result;
+			LogError("Cant Parse Json %s\n", q2s(id).c_str());
+			return {text,QJsonObject() };
 		}
-		return doc.object().value(id).toObject();
+		return { text, doc.object().value(id).toObject() };
 	}
 	else {
 		LogError("Cant Get work info:%s\n", q2s(id).c_str());
-		return result;
+		return {"",QJsonObject()};
 	}
 }
+
 void DLSiteClient::DownloadThread(QStringList works,cpr::Cookies cookie,cpr::UserAgent user_agent)
 {
 	std::vector<Task> task_list;
@@ -431,9 +432,9 @@ void DLSiteClient::StartDownload(const QByteArray& _cookies, const QByteArray& _
 	thread.detach();
 }
 
-QStringList DLSiteClient::GetTranslationWorks(const QString& work_id)
+DLSiteClient::WorkInfo DLSiteClient::FetchWorksInfo(const QString& work_id)
 {
-	QStringList ret;
+	WorkInfo ret;
 	cpr::Session session;//不需要cookie
 	session.SetVerifySsl(cpr::VerifySsl{ false });
 	session.SetProxies(cpr::Proxies{ {std::string("https"), DLConfig::REQUEST_PROXY} });
@@ -470,10 +471,14 @@ QStringList DLSiteClient::GetTranslationWorks(const QString& work_id)
 	  "production_trade_price_rate": 0,
 	  "translation_bonus_langs": []
 	},
-	目前只见过一层组合关系，且都是一父一子
-	(一父一子时)组合作品的父、子各有一个RJ号，使用两个RJ号均能访问到该翻译作品的网页，但是子作品的url会被重定向至形如maniax/work/=/product_id/{父RJ号}.html/?translation={子RJ号}
+	有的
+	目前只见过一层组合关系	
+	组合作品的父、子有各自的RJ号，使用父/子RJ号均能访问到该翻译作品的网页，但是子作品的url会被重定向至形如maniax/work/=/product_id/{父RJ号}.html/?translation={子RJ号}
 	由于父作品也有lang，推测一个父作品的所有子作品都是同一语言
-	因此视作所有父子两两等价(即双向覆盖)
+	一父可以有多子，如RJ01000889，但是没看出来多个子作品有什么区别
+	部分子作品如RJ01000890无法获取到info，只有父作品可以获取到
+	
+	暂定：视作所有父子两两等价(即双向覆盖)
 	*
 	* 多语言版本在dl_count_items中形如
 	"dl_count_items": [
@@ -503,30 +508,35 @@ QStringList DLSiteClient::GetTranslationWorks(const QString& work_id)
 	因此dl_count_items包含的作品及其子作品均视作两两等价
 	*/
 	QStringList parent_works;
-	//找到所有dl_count_items
 	{
-		auto work_info = GetWorkInfoFromDLSiteAPI(session, work_id);
+		auto work_info_pair = GetWorkInfoFromDLSiteAPI(session, work_id);
+		ret.work_info_text = work_info_pair.first;
+		QJsonObject work_info = work_info_pair.second;
 		//if (work_info.isEmpty())//如果work_info.isEmpty()那么!work_info.contains("dl_count_items")一定为真
 			//return ret;
-		if (!work_info.contains("dl_count_items"))
-			return ret;
-		for (const QJsonValue& item : work_info.value("dl_count_items").toArray())
-			if(item.isObject()&&!item.toObject().empty())
-			{
-				QJsonObject object=item.toObject();
-				QString type = object.value("edition_type").toString();
-				if (type != "language")
+		//检查标签
+		if (work_info.contains("options"))
+			if (work_info.value("options").toString().contains("OTM"))//乙女向
+				ret.is_otm = true;
+		//找到所有dl_count_items
+		if (work_info.contains("dl_count_items"))
+			for (const QJsonValue& item : work_info.value("dl_count_items").toArray())
+				if(item.isObject()&&!item.toObject().empty())
 				{
-					throw "Unknown Situation";
+					QJsonObject object=item.toObject();
+					QString type = object.value("edition_type").toString();
+					if (type != "language")
+					{
+						throw "Unknown Situation";
+					}
+					parent_works += object.value("workno").toString();
 				}
-				parent_works += object.value("workno").toString();
-			}
 	}
 	//找到所有dl_count_items包含的子作品
-	QStringList translation_works = parent_works;
+	ret.translations = parent_works;
 	for (const auto& subwork_id : parent_works)
 	{
-		auto work_info = GetWorkInfoFromDLSiteAPI(session, subwork_id);
+		auto work_info = GetWorkInfoFromDLSiteAPI(session, subwork_id).second;
 		//if (work_info.isEmpty())
 			//return ret;
 		if (!work_info.contains("translation_info"))
@@ -542,10 +552,10 @@ QStringList DLSiteClient::GetTranslationWorks(const QString& work_id)
 			return ret;
 		}
 		for (const QJsonValue& item : translation_info.value("child_worknos").toArray())
-			if(item.isString()&&!translation_works.contains(item.toString()))
-				translation_works += item.toString();
+			if(item.isString()&&!ret.translations.contains(item.toString()))
+				ret.translations += item.toString();
 	}
-	return translation_works;
+	return ret;
 }
 
 void DLSiteClient::StartRename(const QStringList& _files)
@@ -565,29 +575,4 @@ void DLSiteClient::StartRename(const QStringList& _files)
 	}
 	std::thread thread(&DLSiteClient::RenameThread,this,local_files);
 	thread.detach();
-}
-//对所有本地文件，重新获取类型以获得女性向(otome)作品列表，阻塞,返回rj号
-QStringList DLSiteClient::GetOTMWorks(const QStringList& local_files)
-{
-	QStringList ret;
-	cpr::Session session;//不需要cookie
-	session.SetVerifySsl(cpr::VerifySsl{ false });
-	session.SetProxies(cpr::Proxies{ {std::string("https"), DLConfig::REQUEST_PROXY} });
-	session.SetHeader(cpr::Header{ {"user-agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"} });
-	session.SetRedirect(true);
-
-	int ct = 0;
-	for (const auto& file : local_files)
-	{
-		QString id = DLSiteHelperServer::GetIDFromDirName(file);
-		std::string url = Format("https://www.dlsite.com/maniax/work/=/product_id/%s.html", q2s(id).c_str());
-		session.SetUrl(cpr::Url{ url });
-		auto res = session.Get();
-		WorkType type = WorkType::UNKNOWN;
-		if (res.status_code == 200)
-			type = GetWorkTypeFromWeb(res.text, q2s(id));
-		if (type == WorkType::SHIT)
-			ret.append(id);
-	}
-	return ret;
 }

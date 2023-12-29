@@ -25,13 +25,12 @@ protected:
 	QString UpdateBoughtItems(const QByteArray& data);
 
 	std::map<std::string, std::set<std::string>> GetAllOverlapWorks();
+	void DailyTask();
 	void SyncLocalFileToDB();
+	void FetchWorkInfo(int limit=100);//从DLSite获取workinfo并存入数据库
 	void DownloadAll(const QByteArray& cookie, const QByteArray& user_agent);
 	void RenameLocal();
 	QStringList GetLocalFiles(const QStringList& root);
-	void EliminateOTMWorks();
-	//从本地搜索疑似多语言版本的作品，从DLSite获取信息，将其他语言版本标记为覆盖并删除多余的本地文件
-	void EliminateTranslationWorks();
 protected:
 	DLSiteClient client;
 	QTimer daily_timer;

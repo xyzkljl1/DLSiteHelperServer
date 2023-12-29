@@ -20,15 +20,12 @@ DLSiteHelperServer::DLSiteHelperServer(QObject* parent):Tufao::HttpServer(parent
 	//通过HKEY_LOCAL_MACHINE/SYSTEM/CurrentControlSet/Services/Tcpip/Parameters/ReservedPorts项将端口设为保留
 	listen(QHostAddress::Any, DLConfig::SERVER_PORT);
 	connect(this, &DLSiteHelperServer::requestReady, this, &DLSiteHelperServer::HandleRequest);
-	SyncLocalFileToDB();
+	//FetchWorkInfo(1000);
+	SyncLocalFileToDB();//启动时立刻更新本地文件
 	daily_timer.setInterval(86400*1000);
 	daily_timer.start();
-	//每天更新本地文件
-	connect(&daily_timer, &QTimer::timeout, this, &DLSiteHelperServer::SyncLocalFileToDB);
-	//排除本地女性向作品,由于不需要经常使用，直接改代码调用
-	//EliminateOTMWorks();
-	//排除多语言版本，同上直接改代码调用
-	//EliminateTranslationWorks();
+	//每天更新本地文件并获取workinfo
+	connect(&daily_timer, &QTimer::timeout, this, &DLSiteHelperServer::DailyTask);
 }
 
 DLSiteHelperServer::~DLSiteHelperServer()
@@ -218,6 +215,12 @@ std::map<std::string, std::set<std::string>> DLSiteHelperServer::GetAllOverlapWo
 	return overlap_work;
 }
 
+void DLSiteHelperServer::DailyTask()
+{
+	FetchWorkInfo(500);
+	SyncLocalFileToDB();
+}
+
 QString DLSiteHelperServer::UpdateBoughtItems(const QByteArray & data)
 {
 	DataBase database;
@@ -354,6 +357,51 @@ void DLSiteHelperServer::SyncLocalFileToDB()
 	Log("Sync from local %zd works\n", downloaded_works.size());
 }
 
+void DLSiteHelperServer::FetchWorkInfo(int limit)
+{
+	//获取尚未获取过info的作品的info，据此获取其翻译信息并标记为覆盖，然后将info存入数据库
+	//目前存info仅是为了备用以及区分哪些作品处理过
+	//info不需要更新，如果新的多语言版本出现，获取新作品的info时就可以得知翻译信息
+	//info为null表示没有获取过，为空表示获取失败
+	//有的子作品（如RJ01000889）无法获取到info，但是对父作品/其它语言版本获取info的时候也能获取覆盖关系，所以不影响
+	DataBase database;
+	std::string cmd;
+	int ct1 = 0;
+	int ct2 = 0;
+	auto id_list=database.SelectWorksIdWithoutInfo(limit);
+	std::map<std::string, std::string> id_info_map;
+	for (const auto& id : id_list)
+	{
+		DLSiteClient::WorkInfo res=client.FetchWorksInfo(s2q(id));
+ 		QStringList translations = res.translations;
+		//如果有多语言版本则标记覆盖
+		if (translations.count() > 1)
+		{
+			ct1++;
+			ct2 +=translations.count();
+			//两两标记为双向覆盖
+			for (int i = 0; i < translations.count(); ++i)
+				for (int j = i + 1; j < translations.count(); ++j)
+					cmd += database.GetSQLMarkOverlap(q2s(translations[i]), q2s(translations[j]), true);
+		}
+		//如果获取到了info则储存
+		if (!res.work_info_text.isEmpty())
+			id_info_map[id] = q2s(res.work_info_text);
+		else//没获取到就存空字符串，因为该信息并不重要，不要了也没什么损失，存成空防止反复fetch
+			id_info_map[id] = "";
+		//如果是乙女向则直接排除
+		if (res.is_otm)
+			cmd += database.GetSQLUpdateWork(id, 1);
+
+		if (cmd.length() > SQL_LENGTH_LIMIT)
+			database.SendQuery(cmd);
+	}
+	if (cmd.length() > 0)
+		database.SendQuery(cmd);
+	database.SetWorksInfo(id_info_map);
+	Log("Fetched %zd. Marked %d group/%d works of translation.", id_info_map.size(), ct1, ct2);
+}
+
 void DLSiteHelperServer::DownloadAll(const QByteArray&cookie, const QByteArray& user_agent)
 {
 	QStringList works;
@@ -384,37 +432,6 @@ void DLSiteHelperServer::RenameLocal()
 {
 	client.StartRename(GetLocalFiles(DLConfig::local_dirs + DLConfig::local_tmp_dirs));
 }
-void DLSiteHelperServer::EliminateTranslationWorks()
-{
-	DataBase database;
-	std::string cmd;
-	int ct1 = 0;
-	int ct2 = 0;
-	for(const auto&file: GetLocalFiles(DLConfig::local_dirs))
-		if (QFileInfo(file).fileName().contains(s2q("中文版")))//大部分翻译作品名字带"中文版"，其它的忽略
-		{
-			QString id=DLSiteHelperServer::GetIDFromDirName(file);
-			//id = "RJ01018121";
-			QStringList translations=client.GetTranslationWorks(id);
-			ct1 += translations.count() > 1 ? 1 : 0;
-			ct2 += translations.count()>1?translations.count():0;
-			//两两标记为双向覆盖
-			for(int i=0;i<translations.count();++i)
-				for (int j = i + 1; j < translations.count(); ++j)
-				{
-					cmd+=q2s("INSERT IGNORE INTO works(id) VALUES(\"" + translations[i] + "\");"
-						"INSERT IGNORE INTO works(id) VALUES(\"" + translations[j] + "\");"
-						"INSERT IGNORE INTO overlap VALUES(\"" + translations[i] + "\",\"" + translations[j] + "\");"
-						"INSERT IGNORE INTO overlap VALUES(\"" + translations[j] + "\",\"" + translations[i] + "\");"
-						);
-				}
-			if (cmd.length() > SQL_LENGTH_LIMIT)
-				database.SendQuery(cmd);
-		}
-	if (cmd.length() > 0)
-		database.SendQuery(cmd);
-	Log("Eliminate Translations Done.Marked %d group/%d works.",ct1,ct2);
-}
 
 //获得指定根目录下所有work的路径
 //遍历根目录下一级以及根目录下[以SERIES_NAME_EXP开头的目录]的下一级
@@ -434,20 +451,4 @@ QStringList DLSiteHelperServer::GetLocalFiles(const QStringList& root)
 						ret.push_back(sub_info.filePath());
 			}
 	return ret;
-}
-
-void DLSiteHelperServer::EliminateOTMWorks() {
-	//otomei女性向作品
-	auto ids=client.GetOTMWorks(GetLocalFiles(DLConfig::local_dirs));
-	std::string cmd = "";
-	DataBase database;
-	for (auto& id : ids)
-	{
-		cmd += "UPDATE works SET eliminated = 1 WHERE id = \"" + q2s(id) + "\"; ";//由于只检查了本地文件，此处不需要insert
-		if (cmd.length() > SQL_LENGTH_LIMIT)
-			database.SendQuery(cmd);
-	}
-	if (cmd.length() > 0)
-		database.SendQuery(cmd);
-
 }
