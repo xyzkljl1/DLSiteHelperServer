@@ -192,14 +192,8 @@ std::map<std::string, std::set<std::string>> DLSiteHelperServer::GetAllOverlapWo
 	std::map<std::string, std::set<std::string>> overlap_work;
 	//获得手动标记的覆盖关系
 	std::map<std::string, std::set<std::string>> base_edges;
-	mysql_query(&database.my_sql, "select Main,Sub from overlap;");
-	auto result = mysql_store_result(&database.my_sql);
-	if (mysql_errno(&database.my_sql))
-		LogError("%s\n", mysql_error(&database.my_sql));
-	MYSQL_ROW row;
-	while (row = mysql_fetch_row(result))
-		base_edges[row[0]].insert(row[1]);
-	mysql_free_result(result);
+	for (const auto& pair : database.SelectOverlaps())
+		base_edges[pair.first].insert(pair.second);
 	//推导出其它覆盖关系
 	overlap_work = base_edges;
 	for (auto& pair : overlap_work)
@@ -241,16 +235,7 @@ QString DLSiteHelperServer::UpdateBoughtItems(const QByteArray & data)
 	if (cmd.length() > 0)			
 		database.SendQuery(cmd);
 
-	mysql_query(&database.my_sql, "select count(*) from works where bought=1;");
-	auto result = mysql_store_result(&database.my_sql);
-	if (mysql_errno(&database.my_sql))
-		LogError("%s\n", mysql_error(&database.my_sql));
-	int ret = 0;
-	MYSQL_ROW row;
-	if (row = mysql_fetch_row(result))
-		ret = atoi(row[0]);			
-	mysql_free_result(result);
-
+	int ret = database.SelectWorksCount(true,-1, -1, 1);
 	Log("Update Bought List %d\n", ret);
 	return "Sucess";
 }
@@ -258,18 +243,12 @@ QString DLSiteHelperServer::UpdateBoughtItems(const QByteArray & data)
 QString DLSiteHelperServer::GetAllInvalidWorksString()
 {
 	std::set<std::string> invalid_work;
+	DataBase database;
 	//覆盖的作品全部invalid的作品未必是invalid，因为可能有额外的内容
 	//被非invalid覆盖的作品不是invalid，因为可能有合并和分开购买的不同需求	
 	{//已下载/标记/购买的作品是invalid
-		DataBase database;
-		mysql_query(&database.my_sql, "select id from works where eliminated=1 or downloaded=1 or bought=1;");
-		auto result = mysql_store_result(&database.my_sql);
-		if (mysql_errno(&database.my_sql))
-			LogError("%s\n", mysql_error(&database.my_sql));
-		MYSQL_ROW row;
-		while (row = mysql_fetch_row(result))
-			invalid_work.insert(row[0]);
-		mysql_free_result(result);
+		std::vector<std::string> tmp=database.SelectWorksId(false, 1, 1, 1);
+		invalid_work.insert(tmp.begin(), tmp.end());
 	}
 	{//被invalid作品覆盖的作品也是invalid
 		auto overlaps = GetAllOverlapWorks();
@@ -281,15 +260,10 @@ QString DLSiteHelperServer::GetAllInvalidWorksString()
 						invalid_work.insert(j);
 	}
 	{//最后加入specialEliminated，SpecialEliminate的作品不会令覆盖的作品变为invalid所以要放在后面加入
-		DataBase database;
-		mysql_query(&database.my_sql, "select id from works where specialEliminated=1;");
-		auto result = mysql_store_result(&database.my_sql);
-		if (mysql_errno(&database.my_sql))
-			LogError("%s\n", mysql_error(&database.my_sql));
-		MYSQL_ROW row;
-		while (row = mysql_fetch_row(result))
-			invalid_work.insert(row[0]);
-		mysql_free_result(result);
+		std::vector<std::string> tmp = database.SelectWorksId(false, -1, -1, -1, 1);
+		for (auto& id : tmp)
+			if (!invalid_work.count(id))
+				invalid_work.insert(id);
 	}
 	std::string ret;
 	for(const auto& id:invalid_work)
@@ -307,16 +281,8 @@ void DLSiteHelperServer::SyncLocalFileToDB()
 
 	auto overlaps=GetAllOverlapWorks();
 	{//获取eliminated及其覆盖的作品
-		std::set<std::string> eliminated_works;
-		mysql_query(&database.my_sql, "select id from works where eliminated=1;");
-		auto result = mysql_store_result(&database.my_sql);
-		if (mysql_errno(&database.my_sql))
-			LogError("%s\n", mysql_error(&database.my_sql));
-		MYSQL_ROW row;
-		while (row = mysql_fetch_row(result))
-			eliminated_works.insert(row[0]);
-		mysql_free_result(result);
-		overlapped_works = eliminated_works;
+		std::vector<std::string> eliminated_works = database.SelectWorksId(false, 1);
+		overlapped_works.insert(eliminated_works.begin(),eliminated_works.end());
 		for (auto& i : eliminated_works)
 			if (overlaps.count(i))
 				for (auto& j : overlaps[i])
@@ -391,38 +357,25 @@ void DLSiteHelperServer::SyncLocalFileToDB()
 void DLSiteHelperServer::DownloadAll(const QByteArray&cookie, const QByteArray& user_agent)
 {
 	QStringList works;
-	{
-		DataBase database;
-		std::set<std::string> not_expected_works;//不需要下载的
-		{//eliminated/downloaded及其覆盖的作品不需要下载
-			auto overlaps = GetAllOverlapWorks();
-			std::set<std::string> eliminated_works;
-			mysql_query(&database.my_sql, "select id from works where eliminated=1 or downloaded=1;");
-			auto result = mysql_store_result(&database.my_sql);
-			if (mysql_errno(&database.my_sql))
-				LogError("%s\n", mysql_error(&database.my_sql));
-			MYSQL_ROW row;
-			while (row = mysql_fetch_row(result))
-				eliminated_works.insert(row[0]);
-			mysql_free_result(result);
-			not_expected_works = eliminated_works;
-			for (auto& i : eliminated_works)
-				if (overlaps.count(i))
-					for (auto& j : overlaps[i])
-						if (!not_expected_works.count(j))
-							not_expected_works.insert(j);
-		}
-		{
-			mysql_query(&database.my_sql, "select id from works where downloaded=0 and bought=1 and eliminated=0;");
-			auto result = mysql_store_result(&database.my_sql);
-			if (mysql_errno(&database.my_sql))
-				LogError("%s\n", mysql_error(&database.my_sql));
-			MYSQL_ROW row;
-			while (row = mysql_fetch_row(result))
-				if (!not_expected_works.count(row[0]))
-					works.push_back(QString::fromLocal8Bit(row[0]));
-			mysql_free_result(result);
-		}
+	DataBase database;
+	std::set<std::string> not_expected_works;//不需要下载的
+	{//eliminated/downloaded及其覆盖的作品不需要下载
+		auto overlaps = GetAllOverlapWorks();
+		std::vector<std::string> eliminated_works = database.SelectWorksId(false, 1,1);
+
+		not_expected_works.insert(eliminated_works.begin(),eliminated_works.end());
+		for (auto& i : eliminated_works)
+			if (overlaps.count(i))
+				for (auto& j : overlaps[i])
+					if (!not_expected_works.count(j))
+						not_expected_works.insert(j);
+	}
+	{//查找已购买且需要下载的作品
+		//eliminated=0 & downloaded=0 & bought=1
+		std::vector<std::string> bought_works = database.SelectWorksId(true, 0,0,1);
+		for(const auto& id:bought_works)
+			if (!not_expected_works.count(id))
+				works.push_back(s2q(id));
 	}
 	client.StartDownload(cookie,user_agent,works);
 }

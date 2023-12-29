@@ -1,6 +1,6 @@
 -- --------------------------------------------------------
 -- 主机:                           127.0.0.1
--- 服务器版本:                        8.0.17 - MySQL Community Server - GPL
+-- 服务器版本:                        8.0.31 - MySQL Community Server - GPL
 -- 服务器OS:                        Win64
 -- HeidiSQL 版本:                  10.2.0.5599
 -- --------------------------------------------------------
@@ -31,10 +31,11 @@ CREATE TABLE IF NOT EXISTS `overlap` (
 -- Dumping structure for table dlsitehelper.works
 CREATE TABLE IF NOT EXISTS `works` (
   `id` varchar(50) NOT NULL,
-  `eliminated` int(1) NOT NULL DEFAULT '0',
-  `downloaded` int(1) NOT NULL DEFAULT '0',
-  `bought` int(1) NOT NULL DEFAULT '0',
-  `specialEliminated` int(1) NOT NULL DEFAULT '0',
+  `eliminated` int NOT NULL DEFAULT '0',
+  `downloaded` int NOT NULL DEFAULT '0',
+  `bought` int NOT NULL DEFAULT '0',
+  `specialEliminated` int NOT NULL DEFAULT '0',
+  `info` text,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
