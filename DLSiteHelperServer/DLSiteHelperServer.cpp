@@ -301,10 +301,10 @@ void DLSiteHelperServer::SyncLocalFileToDB()
 {
 	std::string cmd;
 	DataBase database;
-	std::set<std::string> ct;
-	std::set<std::string> not_expected_works;//接下来不应该出现在本地的作品
+	std::set<std::string> overlapped_works;//被已下载/已排除作品覆盖的作品
+	std::map<std::string,QString> downloaded_works;//已下载作品，id-dir
 	auto overlaps=GetAllOverlapWorks();
-	{//eliminated及其覆盖的作品不应当出现在本地
+	{//获取eliminated及其覆盖的作品
 		std::set<std::string> eliminated_works;
 		mysql_query(&database.my_sql, "select id from works where eliminated=1;");
 		auto result = mysql_store_result(&database.my_sql);
@@ -314,60 +314,66 @@ void DLSiteHelperServer::SyncLocalFileToDB()
 		while (row = mysql_fetch_row(result))
 			eliminated_works.insert(row[0]);
 		mysql_free_result(result);
-		not_expected_works = eliminated_works;
+		overlapped_works = eliminated_works;
 		for (auto& i : eliminated_works)
 			if (overlaps.count(i))
 				for (auto& j : overlaps[i])
-					if (!not_expected_works.count(j))
-						not_expected_works.insert(j);
+					if (!overlapped_works.count(j))
+						overlapped_works.insert(j);
 	}
-	//重置所有作品downloaded状态
-	cmd = "UPDATE works set downloaded=0;";
-	//依序遍历local_dirs,查找已下载的作品，如果下载了多个互相覆盖的作品，保留靠前的目录中的文件
+	//依序遍历local_dirs,查找已下载的作品去重，如果下载了多个互相覆盖的作品，保留靠前的目录中的文件
 	for (auto& root_dir : DLConfig::local_dirs)
 		for (auto& dir : GetLocalFiles(QStringList{ root_dir }))
 		{
 			std::string id = q2s(GetIDFromDirName(QFileInfo(dir).fileName()));
-			if (!id.empty()) {
-				if (not_expected_works.count(id))//删除不需要的
-				{
-					//downloaded最开始已经设成0了，此处不需要set
-					if (!QDir(dir).removeRecursively())
-						Log("Can't Remove %s\n", q2s(dir).c_str());
-					else
-						Log("Remove Eliminated: %s\n", q2s(dir).c_str());
-				}
+			if(id.empty())
+				continue;
+			if (downloaded_works.count(id) || overlapped_works.count(id))//删除不需要的
+			{
+				//downloaded最开始已经设成0了，此处不需要set
+				if (!QDir(dir).removeRecursively())
+					Log("Can't Remove %s\n", q2s(dir).c_str());
 				else
-				{
-					//因为已经有该作品了，接下来的遍历中该作品及其覆盖作品都不再需要，如果遇到就删除
-					not_expected_works.insert(id);
-					if (overlaps.count(id))
-						for (auto& j : overlaps[id])
-							if (!not_expected_works.count(j))
-								not_expected_works.insert(j);
-
-					cmd += "INSERT IGNORE INTO works(id) VALUES(\"" + id + "\");"
-						"UPDATE works SET downloaded = 1 WHERE id = \"" + id + "\"; ";
-					ct.insert(id);
-				}
+					Log("Remove Eliminated: %s\n", q2s(dir).c_str());
 			}
+			else
+			{
+				downloaded_works[id]=dir;
+				//检查该作品覆盖的作品
+				if (overlaps.count(id))
+					for (auto& sub_id : overlaps[id])
+					{
+						if (sub_id == id)
+							continue;
+						if (downloaded_works.count(sub_id))//如果覆盖了已遍历的作品，则把之前的删除(该作品进入了该else说明两者不是双向覆盖，而是该作品单向覆盖之前的作品)
+						{
+							if (!QDir(downloaded_works[sub_id]).removeRecursively())
+								Log("Can't Remove %s\n", q2s(downloaded_works[sub_id]).c_str());
+							else
+								Log("Remove Eliminated: %s\n", q2s(downloaded_works[sub_id]).c_str());
+							downloaded_works.erase(sub_id);
+						}
+						if(!overlapped_works.count(sub_id))//加入overlapped_works
+							overlapped_works.insert(sub_id);
+					}
+			}
+		}
+	//downloaded写入数据库
+	{
+		//重置所有作品downloaded状态
+		cmd = "UPDATE works set downloaded=0;";
+		for (const auto& pair : downloaded_works)
+		{
+			std::string id = pair.first;
+			cmd += "INSERT IGNORE INTO works(id) VALUES(\"" + id + "\");"
+				"UPDATE works SET downloaded = 1 WHERE id = \"" + id + "\"; ";
 			if (cmd.length() > SQL_LENGTH_LIMIT)
 				database.SendQuery(cmd);
 		}
-	if (cmd.length() > 0)
-		database.SendQuery(cmd);
-
-	mysql_query(&database.my_sql, "select count(*) from works where downloaded=1;");
-	auto result = mysql_store_result(&database.my_sql);
-	if (mysql_errno(&database.my_sql))
-		LogError("%s\n", mysql_error(&database.my_sql));
-	int ret = 0;
-	MYSQL_ROW row;
-	if (row = mysql_fetch_row(result))
-		ret = atoi(row[0]);
-	mysql_free_result(result);
-
-	Log("Sync from local %zd works->%d\n", ct.size(),ret);
+		if (cmd.length() > 0)
+			database.SendQuery(cmd);
+	}
+	Log("Sync from local %zd works\n", downloaded_works.size());
 }
 
 void DLSiteHelperServer::DownloadAll(const QByteArray&cookie, const QByteArray& user_agent)
