@@ -1,4 +1,4 @@
-#include "DataBase.h"
+ï»¿#include "DataBase.h"
 #include "DLConfig.h"
 #include "Util.h"
 DataBase::DataBase()
@@ -12,9 +12,9 @@ DataBase::~DataBase()
 {
 	mysql_close(&my_sql);
 }
-std::string DataBase::GetWhereClause(bool and,int eliminated, int downloaded, int bought, int specialEliminated) {
+std::string DataBase::GetWhereClause(bool isAnd,int eliminated, int downloaded, int bought, int specialEliminated) {
 	std::string where_clause = "";
-	std::string con_str = and ? " and " : " or ";
+	std::string con_str = isAnd ? " and " : " or ";
 	if (eliminated >= 0)
 		where_clause += "eliminated=" + std::to_string(eliminated);
 	if (downloaded >= 0)
@@ -28,11 +28,11 @@ std::string DataBase::GetWhereClause(bool and,int eliminated, int downloaded, in
 	return where_clause;
 }
 
-std::vector<DataBase::Work> DataBase::SelectWorks(bool and,int eliminated, int downloaded, int bought, int specialEliminated)
+std::vector<DataBase::Work> DataBase::SelectWorks(bool isAnd,int eliminated, int downloaded, int bought, int specialEliminated)
 {
 	std::vector<DataBase::Work> ret;
 	std::string sql = "select id,eliminated,downloaded,bought,specialEliminated,info from works" 
-				+ GetWhereClause(and, eliminated, downloaded, bought, specialEliminated) + ";";
+				+ GetWhereClause(isAnd, eliminated, downloaded, bought, specialEliminated) + ";";
 	mysql_query(&my_sql, sql.c_str());
 	auto result = mysql_store_result(&my_sql);
 	if (mysql_errno(&my_sql))
@@ -52,10 +52,10 @@ std::vector<DataBase::Work> DataBase::SelectWorks(bool and,int eliminated, int d
 	return std::vector<DataBase::Work>();
 }
 
-std::vector<std::string> DataBase::SelectWorksId(bool and, int eliminated, int downloaded, int bought, int specialEliminated)
+std::vector<std::string> DataBase::SelectWorksId(bool isAnd, int eliminated, int downloaded, int bought, int specialEliminated)
 {
 	std::vector<std::string> ret;
-	std::string sql = "select id from works" + GetWhereClause(and,eliminated, downloaded, bought, specialEliminated) + ";";
+	std::string sql = "select id from works" + GetWhereClause(isAnd,eliminated, downloaded, bought, specialEliminated) + ";";
 	mysql_query(&my_sql, sql.c_str());
 	auto result = mysql_store_result(&my_sql);
 	if (mysql_errno(&my_sql))
@@ -67,9 +67,9 @@ std::vector<std::string> DataBase::SelectWorksId(bool and, int eliminated, int d
 	return ret;
 }
 
-int DataBase::SelectWorksCount(bool and, int eliminated, int downloaded, int bought, int specialEliminated)
+int DataBase::SelectWorksCount(bool isAnd, int eliminated, int downloaded, int bought, int specialEliminated)
 {
-	std::string sql = "select count(*) from works"+ GetWhereClause(and, eliminated, downloaded,bought,specialEliminated)+";";
+	std::string sql = "select count(*) from works"+ GetWhereClause(isAnd, eliminated, downloaded,bought,specialEliminated)+";";
 	mysql_query(&my_sql, sql.c_str());
 	auto result = mysql_store_result(&my_sql);
 	if (mysql_errno(&my_sql))
@@ -154,7 +154,7 @@ void DataBase::SetWorksInfo(const std::map<std::string, std::string>& id_info_ma
 		std::string id = pair.first;
 		std::string info = pair.second;
 		MYSQL_BIND binds[2];
-		memset(binds, 0, sizeof(binds));//Õâ¸ösizeÕıÈ·Âğ£¿
+		memset(binds, 0, sizeof(binds));//è¿™ä¸ªsizeæ­£ç¡®å—ï¼Ÿ
 		binds[0].buffer_type = MYSQL_TYPE_STRING;
 		binds[0].buffer = (void*)info.c_str();
 		binds[0].buffer_length = info.length();

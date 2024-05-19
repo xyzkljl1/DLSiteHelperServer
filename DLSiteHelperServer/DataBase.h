@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include "mysql.h"
 #include <string>
 #include <vector>
@@ -16,23 +16,23 @@ public:
 	};
 	DataBase();
 	~DataBase();
-	//²ÎÊıÎª1±íÊ¾true£¬Îª0±íÊ¾false£¬Îª-1±íÊ¾any
-	//and=true±íÊ¾ËùÓĞÌõ¼ş¶¼ĞèÒªÂú×ã£¬·ñÔò±íÊ¾Ö»ÒªÂú×ãÒ»¸ö
-	std::vector<DataBase::Work> SelectWorks(bool and, int eliminated = -1, int downloaded = -1, int bought = -1, int specialEliminated = -1);
-	std::vector<std::string> SelectWorksId(bool and, int eliminated = -1, int downloaded = -1, int bought = -1, int specialEliminated = -1);
-	int SelectWorksCount(bool and, int eliminated = -1, int downloaded = -1, int bought = -1, int specialEliminated = -1);
+	//å‚æ•°ä¸º1è¡¨ç¤ºtrueï¼Œä¸º0è¡¨ç¤ºfalseï¼Œä¸º-1è¡¨ç¤ºany
+	//and=trueè¡¨ç¤ºæ‰€æœ‰æ¡ä»¶éƒ½éœ€è¦æ»¡è¶³ï¼Œå¦åˆ™è¡¨ç¤ºåªè¦æ»¡è¶³ä¸€ä¸ª
+	std::vector<DataBase::Work> SelectWorks(bool isAnd, int eliminated = -1, int downloaded = -1, int bought = -1, int specialEliminated = -1);
+	std::vector<std::string> SelectWorksId(bool isAnd, int eliminated = -1, int downloaded = -1, int bought = -1, int specialEliminated = -1);
+	int SelectWorksCount(bool isAnd, int eliminated = -1, int downloaded = -1, int bought = -1, int specialEliminated = -1);
 	void SetWorksInfo(const std::map<std::string, std::string>& id_info_map);
-	//¸üĞÂworkµÄinfo(Ä¬ÈÏ¸ÃÌõÒÑ´æÔÚ)
+	//æ›´æ–°workçš„info(é»˜è®¤è¯¥æ¡å·²å­˜åœ¨)
 	std::vector<std::string> SelectWorksIdWithoutInfo(int limit=100);
 	std::vector<std::pair<std::string, std::string>> SelectOverlaps();
 	std::string GetSQLMarkOverlap(const std::string& main, const std::string& sub, bool both);
 	std::string GetSQLUpdateWork(const std::string &id,int eliminated = -1, int downloaded = -1, int bought = -1, int specialEliminated = -1);
 
-	//·¢ËÍÖ®ºó½«cmdÇå¿Õ,Å×Æú½á¹û
+	//å‘é€ä¹‹åå°†cmdæ¸…ç©º,æŠ›å¼ƒç»“æœ
 	void SendQuery(std::string& cmd);
 	MYSQL my_sql;
 private:
-	std::string GetWhereClause(bool and,int eliminated, int downloaded, int bought, int specialEliminated);
+	std::string GetWhereClause(bool isAnd,int eliminated, int downloaded, int bought, int specialEliminated);
 
 };
 

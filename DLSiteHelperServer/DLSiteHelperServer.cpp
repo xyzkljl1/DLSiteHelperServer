@@ -1,6 +1,7 @@
+ï»¿
 #include "DLSiteHelperServer.h"
 #include "DLSiteClient.h"
-#include <QRegExp>
+#include <qregularexpression.h>
 #include <QDir>
 #include <QUrl>
 #include <string>
@@ -10,22 +11,21 @@
 
 const int SQL_LENGTH_LIMIT = 10000;
 #define WORK_NAME_EXP "[RVBJ]{2}[0-9]{3,8}"
-//°Ñ×ÖÄ¸ºÍÊı×Ö·Ö±ğcaptureµÄ±í´ïÊ½
+//æŠŠå­—æ¯å’Œæ•°å­—åˆ†åˆ«captureçš„è¡¨è¾¾å¼
 #define WORK_NAME_EXP_SEP "([RVBJ]{2})([0-9]{3,8})"
 #define SERIES_NAME_EXP "^S "
 
 
-DLSiteHelperServer::DLSiteHelperServer(QObject* parent):Tufao::HttpServer(parent)
+DLSiteHelperServer::DLSiteHelperServer(QObject* parent):qserver(parent)
 {
-	//Í¨¹ıHKEY_LOCAL_MACHINE/SYSTEM/CurrentControlSet/Services/Tcpip/Parameters/ReservedPortsÏî½«¶Ë¿ÚÉèÎª±£Áô
-	listen(QHostAddress::Any, DLConfig::SERVER_PORT);
-	connect(this, &DLSiteHelperServer::requestReady, this, &DLSiteHelperServer::HandleRequest);
-	//FetchWorkInfo(1000);
-	SyncLocalFileToDB();//Æô¶¯Ê±Á¢¿Ì¸üĞÂ±¾µØÎÄ¼ş
+	//SyncLocalFileToDB();//å¯åŠ¨æ—¶ç«‹åˆ»æ›´æ–°æœ¬åœ°æ–‡ä»¶
 	daily_timer.setInterval(86400*1000);
 	daily_timer.start();
-	//Ã¿Ìì¸üĞÂ±¾µØÎÄ¼ş²¢»ñÈ¡workinfo
+	//æ¯å¤©æ›´æ–°æœ¬åœ°æ–‡ä»¶å¹¶è·å–workinfo
 	connect(&daily_timer, &QTimer::timeout, this, &DLSiteHelperServer::DailyTask);
+	qserver.route("/", [this](const QHttpServerRequest& request, QHttpServerResponder&& response) { this->HandleRequest(request,std::move(response)); });
+	//é€šè¿‡HKEY_LOCAL_MACHINE/SYSTEM/CurrentControlSet/Services/Tcpip/Parameters/ReservedPortsé¡¹å°†ç«¯å£è®¾ä¸ºä¿ç•™
+	qserver.listen(QHostAddress::Any, DLConfig::SERVER_PORT);
 }
 
 DLSiteHelperServer::~DLSiteHelperServer()
@@ -42,9 +42,9 @@ QString DLSiteHelperServer::GetIDFromDirName(QString dir)
 	auto reg = GetWorkNameExpSep();
 	reg.indexIn(dir);
 	QString id = reg.cap(0);
-	//¼ì²éid¸ñÊ½£¬ÒòÎª¿ÉÄÜÍ¨¹ıÆäËüÀ´Ô´ÏÂÔØµÄÎÄ¼ş¸ñÊ½²»ÕıÈ·(Ã»ÓĞ²¹0)
+	//æ£€æŸ¥idæ ¼å¼ï¼Œå› ä¸ºå¯èƒ½é€šè¿‡å…¶å®ƒæ¥æºä¸‹è½½çš„æ–‡ä»¶æ ¼å¼ä¸æ­£ç¡®(æ²¡æœ‰è¡¥0)
 	QString num_postfix = reg.cap(2);
-	if (num_postfix.length() % 2 != 0)//ÆæÊıÎ»Êı×ÖµÄÇ°Ãæ²¹0
+	if (num_postfix.length() % 2 != 0)//å¥‡æ•°ä½æ•°å­—çš„å‰é¢è¡¥0
 	{
 		num_postfix = "0" + num_postfix;
 		id = reg.cap(1) + num_postfix;
@@ -52,42 +52,47 @@ QString DLSiteHelperServer::GetIDFromDirName(QString dir)
 	return id;
 }
 
-void DLSiteHelperServer::HandleRequest(Tufao::HttpServerRequest & request, Tufao::HttpServerResponse & response)
+void DLSiteHelperServer::HandleRequest(const QHttpServerRequest & request, QHttpServerResponder&& response)
 {
-	QString request_target = request.url().toString();
+	QString request_target ="/?"+request.query().toString();
 	QRegExp reg_mark_eliminated("(/\?markEliminated)(" WORK_NAME_EXP ")");
 	QRegExp reg_mark_special_eliminated("(/\?markSpecialEliminated)(" WORK_NAME_EXP ")");
 	QRegExp reg_mark_overlap("(/\?markOverlap)&main=(" WORK_NAME_EXP ")&sub=(" WORK_NAME_EXP ")&duplex=([0-9])");
 	if (request_target.startsWith("/?QueryInvalidDLSite"))
 	{
 		auto ret = GetAllInvalidWorksString();
-		ReplyText(response, Tufao::HttpResponseStatus::OK, ret);
-		Log("Response Query Request\n");
+		ReplyText(std::move(response), QHttpServerResponder::StatusCode::Ok, ret);
+		Log("std::move(response) Query Request\n");
 	}
 	else if (request_target.startsWith("/?QueryOverlapDLSite"))
 	{
 		auto ret = GetAllOverlapWorksString();
-		ReplyText(response, Tufao::HttpResponseStatus::OK, ret);
-		Log("Response Query Request\n");
+		ReplyText(std::move(response), QHttpServerResponder::StatusCode::Ok, ret);
+		Log("std::move(response) Query Request\n");
 	}
 	else if (request_target.startsWith("/?Download"))
 	{
 		Log("Trying to start download,this may take few minutes");
 		SyncLocalFileToDB();
-		//user-agentÓëcookieĞèÒª·ûºÏ£¬user-agentÍ¨¹ıÇëÇóµÄuser-agent£¬cookieÍ¨¹ıÇëÇóµÄdata»ñµÃ
-		DownloadAll(request.readBody(), request.headers().value("user-agent"));
-		ReplyText(response, Tufao::HttpResponseStatus::OK, "Started");
-		Log("Response Download Request\n");
+		//user-agentä¸cookieéœ€è¦ç¬¦åˆï¼Œuser-agenté€šè¿‡è¯·æ±‚çš„user-agentï¼Œcookieé€šè¿‡è¯·æ±‚çš„dataè·å¾—
+		//request.headers()["user-agent"]
+		QByteArray useragent;
+		for (auto& pair : request.headers())
+			if (pair.first.toLower() == "user-agent")
+				useragent = pair.second;
+		DownloadAll(request.body(), useragent);
+		ReplyText(std::move(response), QHttpServerResponder::StatusCode::Ok, "Started");
+		Log("std::move(response) Download Request\n");
 	}
 	else if (request_target.startsWith("/?RenameLocal")) {
 		RenameLocal();
-		ReplyText(response, Tufao::HttpResponseStatus::OK, "Started");
-		Log("Response Rename Request\n");
+		ReplyText(std::move(response), QHttpServerResponder::StatusCode::Ok, "Started");
+		Log("std::move(response) Rename Request\n");
 	}
 	else if (request_target.startsWith("/?UpdateBoughtItems"))
 	{
-		auto ret = UpdateBoughtItems(request.readBody());
-		ReplyText(response, Tufao::HttpResponseStatus::OK, ret);
+		auto ret = UpdateBoughtItems(request.body());
+		ReplyText(std::move(response), QHttpServerResponder::StatusCode::Ok, ret);
 		Log("Update Bought Items\n");
 	}
 	else if (reg_mark_eliminated.indexIn(request_target) > 0)
@@ -102,11 +107,11 @@ void DLSiteHelperServer::HandleRequest(Tufao::HttpServerRequest & request, Tufao
 			if (mysql_errno(&database.my_sql))
 			{
 				LogError("%s\n", mysql_error(&database.my_sql));
-				ReplyText(response, Tufao::HttpResponseStatus::NOT_FOUND, "SQL Fail");
+				ReplyText(std::move(response), QHttpServerResponder::StatusCode::NotFound, "SQL Fail");
 			}
 			else
 			{
-				ReplyText(response, Tufao::HttpResponseStatus::OK, "Success");
+				ReplyText(std::move(response), QHttpServerResponder::StatusCode::Ok, "Success");
 				Log("Mark %s Eliminated\n", id.c_str());
 			}
 		}
@@ -123,11 +128,11 @@ void DLSiteHelperServer::HandleRequest(Tufao::HttpServerRequest & request, Tufao
 			if (mysql_errno(&database.my_sql))
 			{
 				LogError("%s\n", mysql_error(&database.my_sql));
-				ReplyText(response, Tufao::HttpResponseStatus::NOT_FOUND, "SQL Fail");
+				ReplyText(std::move(response), QHttpServerResponder::StatusCode::NotFound, "SQL Fail");
 			}
 			else
 			{
-				ReplyText(response, Tufao::HttpResponseStatus::OK, "Success");
+				ReplyText(std::move(response), QHttpServerResponder::StatusCode::Ok, "Success");
 				Log("Mark %s Special Eliminated\n", id.c_str());
 			}
 		}
@@ -146,22 +151,19 @@ void DLSiteHelperServer::HandleRequest(Tufao::HttpServerRequest & request, Tufao
 		if (mysql_errno(&database.my_sql))
 		{
 			LogError("%s\n", mysql_error(&database.my_sql));
-			ReplyText(response, Tufao::HttpResponseStatus::NOT_FOUND, "SQL Fail");
+			ReplyText(std::move(response), QHttpServerResponder::StatusCode::NotFound, "SQL Fail");
 		}
 		else
 		{
-			ReplyText(response, Tufao::HttpResponseStatus::OK, "Success");
+			ReplyText(std::move(response), QHttpServerResponder::StatusCode::Ok, "Success");
 			Log("Mark Overlap %s%s %s\n", duplex ? "Duplex " : "", main_id.c_str(), sub_id.c_str());
 		}
 	}
 }
 
-void DLSiteHelperServer::ReplyText(Tufao::HttpServerResponse & response,const Tufao::HttpResponseStatus&status, const QString & message)
+void DLSiteHelperServer::ReplyText(QHttpServerResponder&& responder,const QHttpServerResponder::StatusCode&status, const QString & message)
 {
-	response.writeHead(Tufao::HttpResponseStatus::OK);
-	response.headers().replace("Content-Type", "text/plain");
-	response.headers().replace("Access-Control-Allow-Origin", "*");
-	response.end(message.toLocal8Bit());
+	responder.write(message.toLocal8Bit(), QHttpServerResponder::HeaderList{ {"Content-Type", "text/plain"},{"Access-Control-Allow-Origin", "*"} }, status);
 }
 
 QString DLSiteHelperServer::GetAllOverlapWorksString()
@@ -174,10 +176,10 @@ QString DLSiteHelperServer::GetAllOverlapWorksString()
 			ret += "\"" + pair.first + "\":[";
 			for (auto& sub : pair.second)
 				ret += "\""+sub+"\",";
-			ret.pop_back();//È¥µô×îºóÒ»¸ö¶ººÅ
+			ret.pop_back();//å»æ‰æœ€åä¸€ä¸ªé€—å·
 			ret += "],";
 		}
-	if(ret.size()>2)//È¥µô×îºóÒ»¸ö¶ººÅ
+	if(ret.size()>2)//å»æ‰æœ€åä¸€ä¸ªé€—å·
 		ret.pop_back();
 	ret += "}";
 	return s2q(ret);
@@ -187,16 +189,16 @@ std::map<std::string, std::set<std::string>> DLSiteHelperServer::GetAllOverlapWo
 {
 	DataBase database;
 	std::map<std::string, std::set<std::string>> overlap_work;
-	//»ñµÃÊÖ¶¯±ê¼ÇµÄ¸²¸Ç¹ØÏµ
+	//è·å¾—æ‰‹åŠ¨æ ‡è®°çš„è¦†ç›–å…³ç³»
 	std::map<std::string, std::set<std::string>> base_edges;
 	for (const auto& pair : database.SelectOverlaps())
 		base_edges[pair.first].insert(pair.second);
-	//ÍÆµ¼³öÆäËü¸²¸Ç¹ØÏµ
+	//æ¨å¯¼å‡ºå…¶å®ƒè¦†ç›–å…³ç³»
 	overlap_work = base_edges;
 	for (auto& pair : overlap_work)
 	{
 		auto& ret = pair.second;
-		//¶ÔÓÚÃ¿¸öwork£¬»ùÓÚbase_edges¿íËÑ
+		//å¯¹äºæ¯ä¸ªworkï¼ŒåŸºäºbase_edgeså®½æœ
 		std::set<std::string> starts = ret;
 		std::set<std::string> next_starts;
 		do {
@@ -247,13 +249,13 @@ QString DLSiteHelperServer::GetAllInvalidWorksString()
 {
 	std::set<std::string> invalid_work;
 	DataBase database;
-	//¸²¸ÇµÄ×÷Æ·È«²¿invalidµÄ×÷Æ·Î´±ØÊÇinvalid£¬ÒòÎª¿ÉÄÜÓĞ¶îÍâµÄÄÚÈİ
-	//±»·Çinvalid¸²¸ÇµÄ×÷Æ·²»ÊÇinvalid£¬ÒòÎª¿ÉÄÜÓĞºÏ²¢ºÍ·Ö¿ª¹ºÂòµÄ²»Í¬ĞèÇó	
-	{//ÒÑÏÂÔØ/±ê¼Ç/¹ºÂòµÄ×÷Æ·ÊÇinvalid
+	//è¦†ç›–çš„ä½œå“å…¨éƒ¨invalidçš„ä½œå“æœªå¿…æ˜¯invalidï¼Œå› ä¸ºå¯èƒ½æœ‰é¢å¤–çš„å†…å®¹
+	//è¢«éinvalidè¦†ç›–çš„ä½œå“ä¸æ˜¯invalidï¼Œå› ä¸ºå¯èƒ½æœ‰åˆå¹¶å’Œåˆ†å¼€è´­ä¹°çš„ä¸åŒéœ€æ±‚	
+	{//å·²ä¸‹è½½/æ ‡è®°/è´­ä¹°çš„ä½œå“æ˜¯invalid
 		std::vector<std::string> tmp=database.SelectWorksId(false, 1, 1, 1);
 		invalid_work.insert(tmp.begin(), tmp.end());
 	}
-	{//±»invalid×÷Æ·¸²¸ÇµÄ×÷Æ·Ò²ÊÇinvalid
+	{//è¢«invalidä½œå“è¦†ç›–çš„ä½œå“ä¹Ÿæ˜¯invalid
 		auto overlaps = GetAllOverlapWorks();
 		auto tmp = invalid_work;
 		for (auto& i : tmp)
@@ -262,7 +264,7 @@ QString DLSiteHelperServer::GetAllInvalidWorksString()
 					if (!invalid_work.count(j))
 						invalid_work.insert(j);
 	}
-	{//×îºó¼ÓÈëspecialEliminated£¬SpecialEliminateµÄ×÷Æ·²»»áÁî¸²¸ÇµÄ×÷Æ·±äÎªinvalidËùÒÔÒª·ÅÔÚºóÃæ¼ÓÈë
+	{//æœ€ååŠ å…¥specialEliminatedï¼ŒSpecialEliminateçš„ä½œå“ä¸ä¼šä»¤è¦†ç›–çš„ä½œå“å˜ä¸ºinvalidæ‰€ä»¥è¦æ”¾åœ¨åé¢åŠ å…¥
 		std::vector<std::string> tmp = database.SelectWorksId(false, -1, -1, -1, 1);
 		for (auto& id : tmp)
 			if (!invalid_work.count(id))
@@ -278,12 +280,12 @@ void DLSiteHelperServer::SyncLocalFileToDB()
 {
 	std::string cmd;
 	DataBase database;
-	std::set<std::string> overlapped_works;//±»ÒÑÏÂÔØ/ÒÑÅÅ³ı×÷Æ·¸²¸ÇµÄ×÷Æ·
-	std::set<std::string> downloaded_works;//ÒÑÏÂÔØ×÷Æ·
-	std::map<std::string, QString> currentdir_downloaded_works;//µ±Ç°Ä¿Â¼µÄÒÑÏÂÔØ×÷Æ·£¬id-dir
+	std::set<std::string> overlapped_works;//è¢«å·²ä¸‹è½½/å·²æ’é™¤ä½œå“è¦†ç›–çš„ä½œå“
+	std::set<std::string> downloaded_works;//å·²ä¸‹è½½ä½œå“
+	std::map<std::string, QString> currentdir_downloaded_works;//å½“å‰ç›®å½•çš„å·²ä¸‹è½½ä½œå“ï¼Œid-dir
 
 	auto overlaps=GetAllOverlapWorks();
-	{//»ñÈ¡eliminated¼°Æä¸²¸ÇµÄ×÷Æ·
+	{//è·å–eliminatedåŠå…¶è¦†ç›–çš„ä½œå“
 		std::vector<std::string> eliminated_works = database.SelectWorksId(false, 1);
 		overlapped_works.insert(eliminated_works.begin(),eliminated_works.end());
 		for (auto& i : eliminated_works)
@@ -292,7 +294,7 @@ void DLSiteHelperServer::SyncLocalFileToDB()
 					if (!overlapped_works.count(j))
 						overlapped_works.insert(j);
 	}
-	//ÒÀĞò±éÀúlocal_dirs,²éÕÒÒÑÏÂÔØµÄ×÷Æ·È¥ÖØ£¬Èç¹ûÏÂÔØÁË¶à¸ö»¥Ïà¸²¸ÇµÄ×÷Æ·£¬±£Áô¿¿Ç°µÄÄ¿Â¼ÖĞµÄÎÄ¼ş
+	//ä¾åºéå†local_dirs,æŸ¥æ‰¾å·²ä¸‹è½½çš„ä½œå“å»é‡ï¼Œå¦‚æœä¸‹è½½äº†å¤šä¸ªäº’ç›¸è¦†ç›–çš„ä½œå“ï¼Œä¿ç•™é å‰çš„ç›®å½•ä¸­çš„æ–‡ä»¶
 	for (auto& root_dir : DLConfig::local_dirs)
 	{
 		currentdir_downloaded_works.clear();
@@ -303,10 +305,10 @@ void DLSiteHelperServer::SyncLocalFileToDB()
 				continue;
 			if (downloaded_works.count(id) || overlapped_works.count(id))
 			{
-				//É¾³ı²»ĞèÒªµÄ
-				//°´Ä¿Â¼ÓÅÏÈ¼¶±éÀú£¬Èç¹û×÷Æ·¸²¸ÇÁËÍ¬Ä¿Â¼/µÍÓÅÏÈ¼¶Ä¿Â¼µÄ×÷Æ·ÔòÉ¾³ı±»¸²¸ÇµÄ×÷Æ·
-				//²»ÄÜÒòµÍÓÅÏÈ¼¶Ä¿Â¼µÄ×÷Æ·µÄÉ¾µô¸ßÓÅÏÈ¼¶Ä¿Â¼µÄ×÷Æ·£¬·ÀÖ¹Ò»¸öÊÕ²Ø×÷Æ·ÒòÎªĞÂÏÂÔØÁËÒ»¸öºÏ¼¯¾Í±»´ÓÊÕ²ØÎÄ¼ş¼ĞÀïÒÆ³ı
-				//Í¬Ä¿Â¼¸²¸Ç×÷Æ·»áÒòÎª±éÀúË³ĞòÂ©µôÒ»²¿·Ö£¬ÀıÈçAµ¥Ïò¸²¸ÇB£¬ÏÈ±éÀúBÔÙ±éÀúA£¬ÔòB²»»áÔÚ´Ë´¦±»É¾³ı£¬ÔÚÏÂ·½²¹³äÅĞ¶Ïcurrentdir_downloaded_works
+				//åˆ é™¤ä¸éœ€è¦çš„
+				//æŒ‰ç›®å½•ä¼˜å…ˆçº§éå†ï¼Œå¦‚æœä½œå“è¦†ç›–äº†åŒç›®å½•/ä½ä¼˜å…ˆçº§ç›®å½•çš„ä½œå“åˆ™åˆ é™¤è¢«è¦†ç›–çš„ä½œå“
+				//ä¸èƒ½å› ä½ä¼˜å…ˆçº§ç›®å½•çš„ä½œå“çš„åˆ æ‰é«˜ä¼˜å…ˆçº§ç›®å½•çš„ä½œå“ï¼Œé˜²æ­¢ä¸€ä¸ªæ”¶è—ä½œå“å› ä¸ºæ–°ä¸‹è½½äº†ä¸€ä¸ªåˆé›†å°±è¢«ä»æ”¶è—æ–‡ä»¶å¤¹é‡Œç§»é™¤
+				//åŒç›®å½•è¦†ç›–ä½œå“ä¼šå› ä¸ºéå†é¡ºåºæ¼æ‰ä¸€éƒ¨åˆ†ï¼Œä¾‹å¦‚Aå•å‘è¦†ç›–Bï¼Œå…ˆéå†Bå†éå†Aï¼Œåˆ™Bä¸ä¼šåœ¨æ­¤å¤„è¢«åˆ é™¤ï¼Œåœ¨ä¸‹æ–¹è¡¥å……åˆ¤æ–­currentdir_downloaded_works
 				if (!QDir(dir).removeRecursively())
 					Log("Can't Remove %s\n", q2s(dir).c_str());
 				else
@@ -316,16 +318,16 @@ void DLSiteHelperServer::SyncLocalFileToDB()
 			{
 				downloaded_works.insert(id);
 				currentdir_downloaded_works[id] = dir;
-				//¼ì²é¸Ã×÷Æ·¸²¸ÇµÄ×÷Æ·
+				//æ£€æŸ¥è¯¥ä½œå“è¦†ç›–çš„ä½œå“
 				if (overlaps.count(id))
 					for (auto& sub_id : overlaps[id])
 					{
 						if (sub_id == id)
 							continue;
-						//¼ÓÈëoverlapped_works
+						//åŠ å…¥overlapped_works
 						if (!overlapped_works.count(sub_id))
 							overlapped_works.insert(sub_id);
-						//Èç¹û¸²¸ÇÁËÍ¬Ä¿Â¼ÏÂÆäËü×÷Æ·£¬Ôò°ÑÖ®Ç°µÄ×÷Æ·É¾³ı(¸Ã×÷Æ·½øÈëÁË¸ÃifËµÃ÷Á½Õß²»ÊÇË«Ïò¸²¸Ç£¬¶øÊÇ¸Ã×÷Æ·µ¥Ïò¸²¸ÇÖ®Ç°µÄ×÷Æ·)
+						//å¦‚æœè¦†ç›–äº†åŒç›®å½•ä¸‹å…¶å®ƒä½œå“ï¼Œåˆ™æŠŠä¹‹å‰çš„ä½œå“åˆ é™¤(è¯¥ä½œå“è¿›å…¥äº†è¯¥ifè¯´æ˜ä¸¤è€…ä¸æ˜¯åŒå‘è¦†ç›–ï¼Œè€Œæ˜¯è¯¥ä½œå“å•å‘è¦†ç›–ä¹‹å‰çš„ä½œå“)
 						if (currentdir_downloaded_works.count(sub_id))
 						{
 							if (!QDir(currentdir_downloaded_works[sub_id]).removeRecursively())
@@ -340,9 +342,9 @@ void DLSiteHelperServer::SyncLocalFileToDB()
 		}
 
 	}
-	//downloadedĞ´ÈëÊı¾İ¿â
+	//downloadedå†™å…¥æ•°æ®åº“
 	{
-		//ÖØÖÃËùÓĞ×÷Æ·downloaded×´Ì¬
+		//é‡ç½®æ‰€æœ‰ä½œå“downloadedçŠ¶æ€
 		cmd = "UPDATE works set downloaded=0;";
 		for (const auto& id : downloaded_works)
 		{
@@ -359,11 +361,11 @@ void DLSiteHelperServer::SyncLocalFileToDB()
 
 void DLSiteHelperServer::FetchWorkInfo(int limit)
 {
-	//»ñÈ¡ÉĞÎ´»ñÈ¡¹ıinfoµÄ×÷Æ·µÄinfo£¬¾İ´Ë»ñÈ¡Æä·­ÒëĞÅÏ¢²¢±ê¼ÇÎª¸²¸Ç£¬È»ºó½«info´æÈëÊı¾İ¿â
-	//Ä¿Ç°´æinfo½öÊÇÎªÁË±¸ÓÃÒÔ¼°Çø·ÖÄÄĞ©×÷Æ·´¦Àí¹ı
-	//info²»ĞèÒª¸üĞÂ£¬Èç¹ûĞÂµÄ¶àÓïÑÔ°æ±¾³öÏÖ£¬»ñÈ¡ĞÂ×÷Æ·µÄinfoÊ±¾Í¿ÉÒÔµÃÖª·­ÒëĞÅÏ¢
-	//infoÎªnull±íÊ¾Ã»ÓĞ»ñÈ¡¹ı£¬Îª¿Õ±íÊ¾»ñÈ¡Ê§°Ü
-	//ÓĞµÄ×Ó×÷Æ·£¨ÈçRJ01000889£©ÎŞ·¨»ñÈ¡µ½info£¬µ«ÊÇ¶Ô¸¸×÷Æ·/ÆäËüÓïÑÔ°æ±¾»ñÈ¡infoµÄÊ±ºòÒ²ÄÜ»ñÈ¡¸²¸Ç¹ØÏµ£¬ËùÒÔ²»Ó°Ïì
+	//è·å–å°šæœªè·å–è¿‡infoçš„ä½œå“çš„infoï¼Œæ®æ­¤è·å–å…¶ç¿»è¯‘ä¿¡æ¯å¹¶æ ‡è®°ä¸ºè¦†ç›–ï¼Œç„¶åå°†infoå­˜å…¥æ•°æ®åº“
+	//ç›®å‰å­˜infoä»…æ˜¯ä¸ºäº†å¤‡ç”¨ä»¥åŠåŒºåˆ†å“ªäº›ä½œå“å¤„ç†è¿‡
+	//infoä¸éœ€è¦æ›´æ–°ï¼Œå¦‚æœæ–°çš„å¤šè¯­è¨€ç‰ˆæœ¬å‡ºç°ï¼Œè·å–æ–°ä½œå“çš„infoæ—¶å°±å¯ä»¥å¾—çŸ¥ç¿»è¯‘ä¿¡æ¯
+	//infoä¸ºnullè¡¨ç¤ºæ²¡æœ‰è·å–è¿‡ï¼Œä¸ºç©ºè¡¨ç¤ºè·å–å¤±è´¥
+	//æœ‰çš„å­ä½œå“ï¼ˆå¦‚RJ01000889ï¼‰æ— æ³•è·å–åˆ°infoï¼Œä½†æ˜¯å¯¹çˆ¶ä½œå“/å…¶å®ƒè¯­è¨€ç‰ˆæœ¬è·å–infoçš„æ—¶å€™ä¹Ÿèƒ½è·å–è¦†ç›–å…³ç³»ï¼Œæ‰€ä»¥ä¸å½±å“
 	DataBase database;
 	std::string cmd;
 	int ct1 = 0;
@@ -374,22 +376,22 @@ void DLSiteHelperServer::FetchWorkInfo(int limit)
 	{
 		DLSiteClient::WorkInfo res=client.FetchWorksInfo(s2q(id));
  		QStringList translations = res.translations;
-		//Èç¹ûÓĞ¶àÓïÑÔ°æ±¾Ôò±ê¼Ç¸²¸Ç
+		//å¦‚æœæœ‰å¤šè¯­è¨€ç‰ˆæœ¬åˆ™æ ‡è®°è¦†ç›–
 		if (translations.count() > 1)
 		{
 			ct1++;
 			ct2 +=translations.count();
-			//Á½Á½±ê¼ÇÎªË«Ïò¸²¸Ç
+			//ä¸¤ä¸¤æ ‡è®°ä¸ºåŒå‘è¦†ç›–
 			for (int i = 0; i < translations.count(); ++i)
 				for (int j = i + 1; j < translations.count(); ++j)
 					cmd += database.GetSQLMarkOverlap(q2s(translations[i]), q2s(translations[j]), true);
 		}
-		//Èç¹û»ñÈ¡µ½ÁËinfoÔò´¢´æ
+		//å¦‚æœè·å–åˆ°äº†infoåˆ™å‚¨å­˜
 		if (!res.work_info_text.isEmpty())
 			id_info_map[id] = q2s(res.work_info_text);
-		else//Ã»»ñÈ¡µ½¾Í´æ¿Õ×Ö·û´®£¬ÒòÎª¸ÃĞÅÏ¢²¢²»ÖØÒª£¬²»ÒªÁËÒ²Ã»Ê²Ã´ËğÊ§£¬´æ³É¿Õ·ÀÖ¹·´¸´fetch
+		else//æ²¡è·å–åˆ°å°±å­˜ç©ºå­—ç¬¦ä¸²ï¼Œå› ä¸ºè¯¥ä¿¡æ¯å¹¶ä¸é‡è¦ï¼Œä¸è¦äº†ä¹Ÿæ²¡ä»€ä¹ˆæŸå¤±ï¼Œå­˜æˆç©ºé˜²æ­¢åå¤fetch
 			id_info_map[id] = "";
-		//Èç¹ûÊÇÒÒÅ®ÏòÔòÖ±½ÓÅÅ³ı
+		//å¦‚æœæ˜¯ä¹™å¥³å‘åˆ™ç›´æ¥æ’é™¤
 		if (res.is_otm)
 			cmd += database.GetSQLUpdateWork(id, 1);
 
@@ -406,8 +408,8 @@ void DLSiteHelperServer::DownloadAll(const QByteArray&cookie, const QByteArray& 
 {
 	QStringList works;
 	DataBase database;
-	std::set<std::string> not_expected_works;//²»ĞèÒªÏÂÔØµÄ
-	{//eliminated/downloaded¼°Æä¸²¸ÇµÄ×÷Æ·²»ĞèÒªÏÂÔØ
+	std::set<std::string> not_expected_works;//ä¸éœ€è¦ä¸‹è½½çš„
+	{//eliminated/downloadedåŠå…¶è¦†ç›–çš„ä½œå“ä¸éœ€è¦ä¸‹è½½
 		auto overlaps = GetAllOverlapWorks();
 		std::vector<std::string> eliminated_works = database.SelectWorksId(false, 1,1);
 
@@ -418,7 +420,7 @@ void DLSiteHelperServer::DownloadAll(const QByteArray&cookie, const QByteArray& 
 					if (!not_expected_works.count(j))
 						not_expected_works.insert(j);
 	}
-	{//²éÕÒÒÑ¹ºÂòÇÒĞèÒªÏÂÔØµÄ×÷Æ·
+	{//æŸ¥æ‰¾å·²è´­ä¹°ä¸”éœ€è¦ä¸‹è½½çš„ä½œå“
 		//eliminated=0 & downloaded=0 & bought=1
 		std::vector<std::string> bought_works = database.SelectWorksId(true, 0,0,1);
 		for(const auto& id:bought_works)
@@ -433,8 +435,8 @@ void DLSiteHelperServer::RenameLocal()
 	client.StartRename(GetLocalFiles(DLConfig::local_dirs + DLConfig::local_tmp_dirs));
 }
 
-//»ñµÃÖ¸¶¨¸ùÄ¿Â¼ÏÂËùÓĞworkµÄÂ·¾¶
-//±éÀú¸ùÄ¿Â¼ÏÂÒ»¼¶ÒÔ¼°¸ùÄ¿Â¼ÏÂ[ÒÔSERIES_NAME_EXP¿ªÍ·µÄÄ¿Â¼]µÄÏÂÒ»¼¶
+//è·å¾—æŒ‡å®šæ ¹ç›®å½•ä¸‹æ‰€æœ‰workçš„è·¯å¾„
+//éå†æ ¹ç›®å½•ä¸‹ä¸€çº§ä»¥åŠæ ¹ç›®å½•ä¸‹[ä»¥SERIES_NAME_EXPå¼€å¤´çš„ç›®å½•]çš„ä¸‹ä¸€çº§
 QStringList DLSiteHelperServer::GetLocalFiles(const QStringList& root)
 {
 	QStringList ret;

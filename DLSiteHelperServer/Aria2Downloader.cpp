@@ -1,4 +1,4 @@
-#include "Aria2Downloader.h"
+ï»¿#include "Aria2Downloader.h"
 #include <Windows.h>
 #include <tlhelp32.h>
 #include <tchar.h>
@@ -30,13 +30,13 @@ bool Aria2Downloader::StartDownload(const std::vector<Task>& _tasks, const cpr::
 	task_list.clear();
 	for (auto& _task : _tasks)
 		task_list.push_back(_task);
-	//³õÊ¼»¯ÈÎÎñ
+	//åˆå§‹åŒ–ä»»åŠ¡
 	if (CheckTaskStatus(true)&&!task_list.empty())
 	{
 		running = false;
 		return false;
 	}
-	//¿ªÊ¼¶¨ÆÚ¼ì²é×´Ì¬
+	//å¼€å§‹å®šæœŸæ£€æŸ¥çŠ¶æ€
 	std::thread thread(&Aria2Downloader::CheckThread, this);
 	thread.detach();
 	return true;
@@ -47,11 +47,11 @@ void Aria2Downloader::CheckThread()
 #ifdef _DEBUG
 		Sleep(1000 * 30);
 #else
-		//ÎÒµÄÍøËÙ¿ìÈçÄ§¹í£¬²»ĞèÒª°Ñ¼ä¸ôÉèµÃºÜ³¤
+		//æˆ‘çš„ç½‘é€Ÿå¿«å¦‚é­”é¬¼ï¼Œä¸éœ€è¦æŠŠé—´éš”è®¾å¾—å¾ˆé•¿
 		Sleep(1000 * 15 * 30);
 #endif
 	while (!CheckTaskStatus(false));
-	//Aria2»áÏÈÔÚ±¾µØ´´½¨Ä¿±êÎÄ¼ş£¬ËùÒÔÒªÏÈ¼ì²éÈÎÎñ×´Ì¬ÔÙ¼ì²é±¾µØÎÄ¼ş
+	//Aria2ä¼šå…ˆåœ¨æœ¬åœ°åˆ›å»ºç›®æ ‡æ–‡ä»¶ï¼Œæ‰€ä»¥è¦å…ˆæ£€æŸ¥ä»»åŠ¡çŠ¶æ€å†æ£€æŸ¥æœ¬åœ°æ–‡ä»¶
 	std::vector<QString> files;
 	for (auto&task : task_list)
 		for (int i = 0; i < task.urls.size(); ++i)
@@ -78,10 +78,10 @@ void Aria2Downloader::CheckThread()
 void Aria2Downloader::CheckAria2Status(bool init) {
 	if (init)
 	{
-		//¹Ø±ÕÖ®Ç°µÄaria2
+		//å…³é—­ä¹‹å‰çš„aria2
 		TCHAR tszProcess[64] = { 0 };
 		lstrcpy(tszProcess, _T("aria2c(DLSite).exe"));
-		//²éÕÒ½ø³Ì
+		//æŸ¥æ‰¾è¿›ç¨‹
 		STARTUPINFO st;
 		PROCESS_INFORMATION pi;
 		PROCESSENTRY32 ps;
@@ -91,7 +91,7 @@ void Aria2Downloader::CheckAria2Status(bool init) {
 		memset(&ps, 0, sizeof(PROCESSENTRY32));
 		ps.dwSize = sizeof(PROCESSENTRY32);
 		memset(&pi, 0, sizeof(PROCESS_INFORMATION));
-		// ±éÀú½ø³Ì 
+		// éå†è¿›ç¨‹ 
 		hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 		if (hSnapshot != INVALID_HANDLE_VALUE && Process32First(hSnapshot, &ps))
 			do {
@@ -108,7 +108,7 @@ void Aria2Downloader::CheckAria2Status(bool init) {
 			} while (Process32Next(hSnapshot, &ps));
 			CloseHandle(hSnapshot);
 	}
-	//file-allocation=fallocÊ±ĞèÌáÈ¨
+	//file-allocation=fallocæ—¶éœ€ææƒ
 	if ((!aria2_process) || aria2_process->state() != QProcess::Running)
 	{
 		if (aria2_process)
@@ -121,11 +121,11 @@ void Aria2Downloader::CheckAria2Status(bool init) {
 		aria2_process = new QProcess(this);
 		aria2_process->setWorkingDirectory(QCoreApplication::applicationDirPath() + "/aria2");
 		aria2_process->setProcessEnvironment(QProcessEnvironment::systemEnvironment());
-		aria2_process->setProgram("\"" + QCoreApplication::applicationDirPath() + "/aria2/aria2c(DLSite).exe\"");//ÓĞÀ¨ºÅ/¿Õ¸ñµÄÂ·¾¶ĞèÒªÓÃÒıºÅÀ¨ÆğÀ´
+		aria2_process->setProgram("\"" + QCoreApplication::applicationDirPath() + "/aria2/aria2c(DLSite).exe\"");//æœ‰æ‹¬å·/ç©ºæ ¼çš„è·¯å¾„éœ€è¦ç”¨å¼•å·æ‹¬èµ·æ¥
 		aria2_process->setArguments({ "--conf-path=aria2.conf","--all-proxy=" + DLConfig::ARIA2_PROXY,
 									QString("--rpc-listen-port=%1").arg(DLConfig::ARIA2_PORT),/*"--referer=\"https://www.dlsite.com/\"","--check-certificate=false"*/ });
 #ifdef _DEBUG
-		//ÏÔÊ¾´°¿Ú
+		//æ˜¾ç¤ºçª—å£
 		aria2_process->setCreateProcessArgumentsModifier(
 			[](QProcess::CreateProcessArguments * args) {
 			args->flags |= CREATE_NEW_CONSOLE;
@@ -138,12 +138,12 @@ void Aria2Downloader::CheckAria2Status(bool init) {
 }
 bool Aria2Downloader::CheckTaskStatus(bool init)
 {
-	if (init)//ÇåÀíÄ¿±êÄ¿Â¼£¬·ÀÖ¹´íÎóµÄÎÄ¼şÓ°ÏìÏÂÔØ
+	if (init)//æ¸…ç†ç›®æ ‡ç›®å½•ï¼Œé˜²æ­¢é”™è¯¯çš„æ–‡ä»¶å½±å“ä¸‹è½½
 		QDir(DLConfig::DOWNLOAD_DIR).removeRecursively();
 	/*
-	aria2ÖĞ³ö´íµÄÈÎÎñÎŞ·¨¼ÌĞø£¬Ö»ÄÜ´´½¨Ò»¸öĞÂµÄÌæ´úËü(»á×Ô¶¯¶ÏµãĞø´«)
-	Èç¹ûÈÎÎñÌ«¶àµ¼ÖÂ¾ÉµÄÈÎÎñ±»ÊÍ·Å£¬¿ÉÄÜ»áÁî²éÑ¯µÃ²»µ½ÕıÈ·µÄ½á¹û
-	¿¼ÂÇµ½²»»áÏÂÔØºÜ¶àÎÄ¼ş£¬ÔÚÅäÖÃÎÄ¼şÖĞ½«max-download-resultµ÷´ó¾ÍÄÜ±ÜÃâÕâ¸öÎÊÌâ
+	aria2ä¸­å‡ºé”™çš„ä»»åŠ¡æ— æ³•ç»§ç»­ï¼Œåªèƒ½åˆ›å»ºä¸€ä¸ªæ–°çš„æ›¿ä»£å®ƒ(ä¼šè‡ªåŠ¨æ–­ç‚¹ç»­ä¼ )
+	å¦‚æœä»»åŠ¡å¤ªå¤šå¯¼è‡´æ—§çš„ä»»åŠ¡è¢«é‡Šæ”¾ï¼Œå¯èƒ½ä¼šä»¤æŸ¥è¯¢å¾—ä¸åˆ°æ­£ç¡®çš„ç»“æœ
+	è€ƒè™‘åˆ°ä¸ä¼šä¸‹è½½å¾ˆå¤šæ–‡ä»¶ï¼Œåœ¨é…ç½®æ–‡ä»¶ä¸­å°†max-download-resultè°ƒå¤§å°±èƒ½é¿å…è¿™ä¸ªé—®é¢˜
 	*/
 	cpr::Session session;
 	session.SetUrl(cpr::Url{ QString("http://127.0.0.1:%1/jsonrpc").arg(DLConfig::ARIA2_PORT).toStdString() });
@@ -151,7 +151,7 @@ bool Aria2Downloader::CheckTaskStatus(bool init)
 	std::vector<Aria2Task> tmp_task_list;
 	float size_ct = .0f;
 	float total_size_ct = .0f;
-	//aria2ÈÎÎñ¼ÆÊı
+	//aria2ä»»åŠ¡è®¡æ•°
 	int unknown_ct = 0;
 	int update_ct = 0;
 	int running_ct = 0;
@@ -166,10 +166,10 @@ bool Aria2Downloader::CheckTaskStatus(bool init)
 			continue;
 		if (task.urls.empty())
 			continue;
-		//ÕÒµ½ĞèÒª¸üĞÂµÄ×ÓÈÎÎñ
+		//æ‰¾åˆ°éœ€è¦æ›´æ–°çš„å­ä»»åŠ¡
 		total_ct += task.urls.size();
-		std::vector<int> update_index;//ĞèÒª¸üĞÂµÄ×ÓÈÎÎñµÄË÷Òı
-		for (int i = 0; i < task.aria2_id.size(); ++i)//aria_idºÍurlµÄsizeÓ¦¸ÃÊÇÒ»ÖÂµÄ
+		std::vector<int> update_index;//éœ€è¦æ›´æ–°çš„å­ä»»åŠ¡çš„ç´¢å¼•
+		for (int i = 0; i < task.aria2_id.size(); ++i)//aria_idå’Œurlçš„sizeåº”è¯¥æ˜¯ä¸€è‡´çš„
 			if (task.aria2_id[i] == "")
 				update_index.push_back(i);
 			else
@@ -212,9 +212,9 @@ bool Aria2Downloader::CheckTaskStatus(bool init)
 		update_ct += update_index.size();
 		if (update_index.empty())
 			continue;
-		if (!init)//Èç¹û²»ÊÇµÚÒ»´Î´´½¨ÈÎÎñ£¬Ê§Ğ§µÄÈÎÎñ¿ÉÄÜÊÇÓÉÓÚcookie¹ıÆÚ£¬ĞèÒªÖØĞÂ»ñÈ¡
+		if (!init)//å¦‚æœä¸æ˜¯ç¬¬ä¸€æ¬¡åˆ›å»ºä»»åŠ¡ï¼Œå¤±æ•ˆçš„ä»»åŠ¡å¯èƒ½æ˜¯ç”±äºcookieè¿‡æœŸï¼Œéœ€è¦é‡æ–°è·å–
 			task.cookies = DLSiteClient::TryDownloadWork(task.id, main_cookie, user_agent).cookies;
-		//¸üĞÂ×ÓÈÎÎñ
+		//æ›´æ–°å­ä»»åŠ¡
 		std::string path = task.GetDownloadDir();
 		if (!QDir(QString::fromLocal8Bit(path.c_str())).exists())
 			QDir().mkpath(QString::fromLocal8Bit(path.c_str()));
@@ -255,7 +255,7 @@ bool Aria2Downloader::CheckTaskStatus(bool init)
 		if (init)
 			tmp_task_list.push_back(task);
 	}
-	if (init)//È¥µôÎŞ·¨/²»ĞèÒªÏÂÔØµÄÈÎÎñ
+	if (init)//å»æ‰æ— æ³•/ä¸éœ€è¦ä¸‹è½½çš„ä»»åŠ¡
 	{
 		Log("Start Download %d/%d works\n", (int)tmp_task_list.size(), (int)task_list.size());
 		task_list = tmp_task_list;

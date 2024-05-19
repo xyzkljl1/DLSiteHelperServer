@@ -1,6 +1,6 @@
-#pragma once
-#include <string>
+ï»¿#pragma once
 #include <QString>
+#include <string>
 #include <set>
 #include <vector>
 extern std::string Format(const char * Format, ...);
@@ -9,26 +9,26 @@ extern std::string q2s(const QByteArray&);
 extern QString s2q(const std::string&);
 extern void LogError(const char * Format, ...);
 extern void Log(const char * Format, ...);
-//½Ï³£×÷Îªstd::stringÓÃµÄ¶¨ÒåÎªstd::string,·ñÔòÎªQString
-//Ò»»áÓÃQStringÒ»»áÓÃstd::stringÎÒºÃ·³°¡
+//è¾ƒå¸¸ä½œä¸ºstd::stringç”¨çš„å®šä¹‰ä¸ºstd::string,å¦åˆ™ä¸ºQString
+//ä¸€ä¼šç”¨QStringä¸€ä¼šç”¨std::stringæˆ‘å¥½çƒ¦å•Š
 enum WorkType {
-	UNKNOWN,//ÉĞÎ´»ñÈ¡µ½
-	VIDEO,//ÊÓÆµ
-	AUDIO,//ÒôÆµ
-	PICTURE,//Í¼Æ¬
-	PROGRAM,//³ÌĞò
-	OTHER,//»ñÈ¡Ê§°Ü/»ñÈ¡µ½ÁËµ«²»ÖªµÀÊÇÊ²Ã´
-	CANTDOWNLOAD,//ä¯ÀÀÆ÷×¨ÓÃ£¬ÎŞ·¨ÏÂÔØ
-	SHIT//Å®ĞÔÏò
+	UNKNOWN,//å°šæœªè·å–åˆ°
+	VIDEO,//è§†é¢‘
+	AUDIO,//éŸ³é¢‘
+	PICTURE,//å›¾ç‰‡
+	PROGRAM,//ç¨‹åº
+	OTHER,//è·å–å¤±è´¥/è·å–åˆ°äº†ä½†ä¸çŸ¥é“æ˜¯ä»€ä¹ˆ
+	CANTDOWNLOAD,//æµè§ˆå™¨ä¸“ç”¨ï¼Œæ— æ³•ä¸‹è½½
+	SHIT//å¥³æ€§å‘
 };
 struct Task {
-	std::string id;//RJºÅ
-	WorkType type = UNKNOWN;//×÷Æ·µÄÀàĞÍ
-	std::set<std::string> download_ext;//ÏÂÔØµÄÎÄ¼ş(½âÑ¹Ç°)µÄ¸ñÊ½
+	std::string id;//RJå·
+	WorkType type = UNKNOWN;//ä½œå“çš„ç±»å‹
+	std::set<std::string> download_ext;//ä¸‹è½½çš„æ–‡ä»¶(è§£å‹å‰)çš„æ ¼å¼
 	std::vector<std::string> urls;
 	std::vector<std::string> cookies;
-	std::vector<std::string> file_names;//ÏÂÔØµÄÎÄ¼şµÄÎÄ¼şÃû
-	QString work_name;//×÷Æ·Ãû
+	std::vector<std::string> file_names;//ä¸‹è½½çš„æ–‡ä»¶çš„æ–‡ä»¶å
+	QString work_name;//ä½œå“å
 	bool ready = false;
 	std::string GetDownloadDir() const;
 	std::string GetDownloadPath(int i) const;

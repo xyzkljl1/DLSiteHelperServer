@@ -1,4 +1,4 @@
-#include "DLSiteClient.h"
+ï»¿#include "DLSiteClient.h"
 #include <regex>
 #include <QDir>
 #include <QFile>
@@ -14,7 +14,7 @@ Q_DECLARE_METATYPE(std::vector<Task>)
 DLSiteClient::DLSiteClient()
 {
 	qRegisterMetaType<std::vector<Task>>();
-	if (DLConfig::ARIA2_Mode)//±¾À´ÊÇÏë×öÁ½¸öDownloaderµÄ£¬µ«ÊÇºóÀ´·¢ÏÖIDM²»Ì«ĞĞ
+	if (DLConfig::ARIA2_Mode)//æœ¬æ¥æ˜¯æƒ³åšä¸¤ä¸ªDownloaderçš„ï¼Œä½†æ˜¯åæ¥å‘ç°IDMä¸å¤ªè¡Œ
 		downloader = new Aria2Downloader();
 	else
 		downloader = new Aria2Downloader();
@@ -41,25 +41,25 @@ bool DLSiteClient::Extract(const QString & file_name, const QString & dir)
 {
 	auto process = new QProcess();
 	process->setWorkingDirectory(QCoreApplication::applicationDirPath()+"/7z");
-	process->setReadChannelMode(QProcess::ProcessChannelMode::MergedChannels);
+	process->setProcessChannelMode(QProcess::ProcessChannelMode::MergedChannels);
 	process->setProcessEnvironment(QProcessEnvironment::systemEnvironment());
 #ifdef _DEBUG
-	//¿ªÆôÊ±ÎŞ·¨½ÓÊÕµ½Êä³ö
+	//å¼€å¯æ—¶æ— æ³•æ¥æ”¶åˆ°è¾“å‡º
 	/*process->setCreateProcessArgumentsModifier(
 		[](QProcess::CreateProcessArguments * args){
 		args->flags |= CREATE_NEW_CONSOLE;
 		args->startupInfo->dwFlags &= ~STARTF_USESTDHANDLES;
 	});*/
 #endif
-	//Í¨Í¨²»Òª¼ÓË«ÒıºÅ£¬¿Õ¸ñºÍÀ¨ºÅÎŞĞè´¦Àí
+	//é€šé€šä¸è¦åŠ åŒå¼•å·ï¼Œç©ºæ ¼å’Œæ‹¬å·æ— éœ€å¤„ç†
 	process->start(
 		QCoreApplication::applicationDirPath() + "/7z/7z.exe",
-		{"x",//½âÑ¹,ÓÃe»áÊ§È¥Ä¿Â¼½á¹¹
+		{"x",//è§£å‹,ç”¨eä¼šå¤±å»ç›®å½•ç»“æ„
 		file_name,
-		"-o"+dir,//Êä³ö
-		"-aoa",//¸²¸Ç
-		"-mcp=932",//SHIFT-JIS±àÂë£¬Ö»ÓĞÈÕÎÄzip±ØĞëÖ¸¶¨±àÂë£¬µ«Ö¸¶¨ÁËÒ²²»»áÁîÆäËüÎÄ¼ş½âÑ¹´íÎó£¬ËùÒÔÍ³Í³¼ÓÉÏ¸Ã²ÎÊı
-		"-sccWIN"//Êä³ö×Ö·û¼¯
+		"-o"+dir,//è¾“å‡º
+		"-aoa",//è¦†ç›–
+		"-mcp=932",//SHIFT-JISç¼–ç ï¼Œåªæœ‰æ—¥æ–‡zipå¿…é¡»æŒ‡å®šç¼–ç ï¼Œä½†æŒ‡å®šäº†ä¹Ÿä¸ä¼šä»¤å…¶å®ƒæ–‡ä»¶è§£å‹é”™è¯¯ï¼Œæ‰€ä»¥ç»Ÿç»ŸåŠ ä¸Šè¯¥å‚æ•°
+		"-sccWIN"//è¾“å‡ºå­—ç¬¦é›†
 		}, QIODevice::ReadOnly);
 	process->waitForStarted();
 	process->waitForFinished();
@@ -82,7 +82,7 @@ void DLSiteClient::OnDownloadDone(std::vector<Task> task_list)
 		return;
 	Log("Download Done,Begin extract\n");
 	QStringList extract_dirs;
-	for (auto&task : task_list)//ÔİÊ±Ö»¼ûµ½¹ıµ¥¸özipºÍ·Ö¶ÎrarÁ½ÖÖ¸ñÊ½
+	for (auto&task : task_list)//æš‚æ—¶åªè§åˆ°è¿‡å•ä¸ªzipå’Œåˆ†æ®µrarä¸¤ç§æ ¼å¼
 	{
 		if (task.download_ext.count("zip"))
 		{
@@ -119,7 +119,7 @@ void DLSiteClient::OnDownloadDone(std::vector<Task> task_list)
 	Log("%d/%d works Extracted\n", (int)extract_dirs.size(), (int)task_list.size());
 	running = false;
 	{
-		running = true;//RenameThread½áÊøÊ±½«runningÖÃ¿Õ
+		running = true;//RenameThreadç»“æŸæ—¶å°†runningç½®ç©º
 		std::thread thread(&DLSiteClient::RenameThread, this, extract_dirs);
 		thread.detach();
 	}
@@ -136,8 +136,8 @@ void DLSiteClient::OnDownloadAborted()
 bool DLSiteClient::RenameFile(const QString& file,const QString& id,const QString&work_name)
 {
 	QString name = unicodeToString(work_name);
-	name.replace(QRegExp("[/\\\\?*<>:\"|.]"), "_");
-	int pos = file.lastIndexOf(QRegExp("[\\/]")) + 1;
+	name.replace(QRegularExpression("[/\\\\?*<>:\"|.]"), "_");
+	int pos = file.lastIndexOf(QRegularExpression("[\\/]")) + 1;
 	QString old_name = QDir(file).dirName();
 	QString new_name = id + " " + name;
 	if (old_name == new_name)
@@ -155,7 +155,7 @@ bool DLSiteClient::RenameFile(const QString& file,const QString& id,const QStrin
 }
 void DLSiteClient::RenameThread(QStringList local_files)
 {
-	cpr::Session session;//²»ĞèÒªcookie
+	cpr::Session session;//ä¸éœ€è¦cookie
 	session.SetVerifySsl(cpr::VerifySsl{ false });
 	session.SetProxies(cpr::Proxies{ {std::string("https"), DLConfig::REQUEST_PROXY} });
 	session.SetHeader(cpr::Header{ {"user-agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"} });
@@ -208,9 +208,9 @@ void DLSiteClient::DownloadThread(QStringList works,cpr::Cookies cookie,cpr::Use
 	QStringList tmp;
 	for (const auto& id : works)
 		futures[q2s(id)] = std::async(&TryDownloadWork, q2s(id), cookie,user_agent);
-	for (auto& pair : futures)//Ó¦¸ÃÓÃwhenall,µ«ÊÇ²¢Ã»ÓĞ
+	for (auto& pair : futures)//åº”è¯¥ç”¨whenall,ä½†æ˜¯å¹¶æ²¡æœ‰
 		task_list.push_back(pair.second.get());
-	//ÓĞÊ±»áÏÂÔØÊ§°Ü403£¬ÒÉËÆÊÇÒòÎªcookieÊ§Ğ§£¬ÔÚchromeÀïÊÖ¶¯³¢ÊÔÏÂÔØÈÎÒâÎÄ¼ş¿É½â
+	//æœ‰æ—¶ä¼šä¸‹è½½å¤±è´¥403ï¼Œç–‘ä¼¼æ˜¯å› ä¸ºcookieå¤±æ•ˆï¼Œåœ¨chromeé‡Œæ‰‹åŠ¨å°è¯•ä¸‹è½½ä»»æ„æ–‡ä»¶å¯è§£
 	//TODO: fix it
 	if (!downloader->StartDownload(task_list, cookie, user_agent))
 	{
@@ -229,9 +229,9 @@ Task DLSiteClient::TryDownloadWork(std::string id,cpr::Cookies cookie, cpr::User
 	session.SetProxies(cpr::Proxies{ {DLConfig::REQUEST_PROXY_TYPE, DLConfig::REQUEST_PROXY} });
 	session.SetCookies(cookie);
 	session.SetUserAgent(user_agent);
-	//urlµÄµÚÒ»¼¶¸ù¾İÂô³¡·ÖÎªmanix¡¢pro¡¢books£¬µ«ÊÇÊµ¼Ê¿ÉÒÔËæ±ãÓÃ
-	//²úÆ·Ò³ÃæµÄµÚ¶ş¼¶¸ù¾İÊÇ·ñ·¢ÊÛ·ÖÎªwork¡¢announce,ÏÂÔØµÄ¿Ï¶¨¶¼ÊÇwork
-	//»ñÈ¡ÀàĞÍ
+	//urlçš„ç¬¬ä¸€çº§æ ¹æ®å–åœºåˆ†ä¸ºmanixã€proã€booksï¼Œä½†æ˜¯å®é™…å¯ä»¥éšä¾¿ç”¨
+	//äº§å“é¡µé¢çš„ç¬¬äºŒçº§æ ¹æ®æ˜¯å¦å‘å”®åˆ†ä¸ºworkã€announce,ä¸‹è½½çš„è‚¯å®šéƒ½æ˜¯work
+	//è·å–ç±»å‹
 	{
 		session.SetRedirect(true);
 		std::string url=Format("https://www.dlsite.com/maniax/work/=/product_id/%s.html",id.c_str());
@@ -244,13 +244,13 @@ Task DLSiteClient::TryDownloadWork(std::string id,cpr::Cookies cookie, cpr::User
 	}
 	if (task.type == WorkType::CANTDOWNLOAD)
 		return task;
-	//»ñÈ¡ÕæÊµÁ¬½Ó
-	session.SetRedirect(false);//²»ÄÜÊ¹ÓÃ×Ô¶¯ÖØ¶¨Ïò£¬ÒòÎªĞèÒª¼ÇÂ¼ÖØ¶¨ÏòÇ°µÄset-cookieÒÔ¼°ÅĞ±ğÊÇ·ñ·Ö¶ÎÏÂÔØ
-	//2023-12£ºmaniax/download/=/product_id/%s.html²»ÔÙÄÜ¶Ô¶àÎÄ¼şÖØ¶¨Ïò£¬¶àÎÄ¼şĞèÒªÖ±½Ó·ÃÎÊmaniax/download/split/=/product_id/%s.html
-	//2023-12£º·Ö¶ÎÏÂÔØÊ±±äÎªÃ¿¸öÎÄ¼ş±ØĞëµ¥¶ÀÊ¹ÓÃÒ»¸öcookie,cookie¾ö¶¨ÏÂÔØÄÄ¸öÎÄ¼ş£¬ÀıÈçÊ¹ÓÃpart1µÄurl+part2µÄcookieÊ±ÏÂÔØµÄÊÇµÚ¶ş¸öÎÄ¼ş
+	//è·å–çœŸå®è¿æ¥
+	session.SetRedirect(false);//ä¸èƒ½ä½¿ç”¨è‡ªåŠ¨é‡å®šå‘ï¼Œå› ä¸ºéœ€è¦è®°å½•é‡å®šå‘å‰çš„set-cookieä»¥åŠåˆ¤åˆ«æ˜¯å¦åˆ†æ®µä¸‹è½½
+	//2023-12ï¼šmaniax/download/=/product_id/%s.htmlä¸å†èƒ½å¯¹å¤šæ–‡ä»¶é‡å®šå‘ï¼Œå¤šæ–‡ä»¶éœ€è¦ç›´æ¥è®¿é—®maniax/download/split/=/product_id/%s.html
+	//2023-12ï¼šåˆ†æ®µä¸‹è½½æ—¶å˜ä¸ºæ¯ä¸ªæ–‡ä»¶å¿…é¡»å•ç‹¬ä½¿ç”¨ä¸€ä¸ªcookie,cookieå†³å®šä¸‹è½½å“ªä¸ªæ–‡ä»¶ï¼Œä¾‹å¦‚ä½¿ç”¨part1çš„url+part2çš„cookieæ—¶ä¸‹è½½çš„æ˜¯ç¬¬äºŒä¸ªæ–‡ä»¶
 	std::string url = Format("https://www.dlsite.com/maniax/download/=/product_id/%s.html", id.c_str());
 	std::string current_cookie;
-	int idx = 0;//µ±Ç°¶ÎÊı£¬0±íÊ¾µ¥¶Î/¶à¶ÎµÄ×ÜÏÂÔØÒ³£¬1~n±íÊ¾¶à¶ÎÏÂÔØµÄµÚ1~nÒ³
+	int idx = 0;//å½“å‰æ®µæ•°ï¼Œ0è¡¨ç¤ºå•æ®µ/å¤šæ®µçš„æ€»ä¸‹è½½é¡µï¼Œ1~nè¡¨ç¤ºå¤šæ®µä¸‹è½½çš„ç¬¬1~né¡µ
 	while (true) {
 		session.SetUrl(cpr::Url{ url });
 		auto res = session.Head();
@@ -273,15 +273,15 @@ Task DLSiteClient::TryDownloadWork(std::string id,cpr::Cookies cookie, cpr::User
 		}
 		if (res.status_code == 302)
 		{
-			//if (res.header["location"] == "Array")//·Ö¶ÎÏÂÔØ£¬´ËÊ±³õÊ¼ÍøÖ·²»Ò»Ñù(Îªhttps://www.dlsite.com/maniax/download/split/=/product_id/%1.html),ÊÔÍ¼ÓÃµ¥¶ÎÏÂÔØµÄurl·ÃÎÊÊ±»áÖØ¶¨Ïòµ½"Array"
-												  //Ã»±ØÒª»ñÈ¡×ÜÏÂÔØÒ³£¬Ö±½Ó´ÓµÚÒ»¶Î¿ªÊ¼ÏÂÔØ
+			//if (res.header["location"] == "Array")//åˆ†æ®µä¸‹è½½ï¼Œæ­¤æ—¶åˆå§‹ç½‘å€ä¸ä¸€æ ·(ä¸ºhttps://www.dlsite.com/maniax/download/split/=/product_id/%1.html),è¯•å›¾ç”¨å•æ®µä¸‹è½½çš„urlè®¿é—®æ—¶ä¼šé‡å®šå‘åˆ°"Array"
+												  //æ²¡å¿…è¦è·å–æ€»ä¸‹è½½é¡µï¼Œç›´æ¥ä»ç¬¬ä¸€æ®µå¼€å§‹ä¸‹è½½
 			//	url = Format("https://www.dlsite.com/maniax/download/=/number/%d/product_id/%s.html",++idx, id.c_str());
 			//else
-			url = res.header["location"];//Ò»°ãÖØ¶¨Ïò
+			url = res.header["location"];//ä¸€èˆ¬é‡å®šå‘
 		}
 		else if (res.status_code == 500) {
-			//Èç¹ûÕıÔÚ·ÃÎÊ³õÊ¼ÏÂÔØÒ³ÃæÇÒ»ñµÃ500£¬ËµÃ÷ÊÇ·Ö¶ÎÏÂÔØ£¬´ËÊ±³õÊ¼ÍøÖ·²»Ò»Ñù(Îªhttps://www.dlsite.com/maniax/download/split/=/product_id/%1.html)
-			//Ã»±ØÒª»ñÈ¡×ÜÏÂÔØÒ³£¬Ö±½Ó´ÓµÚÒ»¶Î¿ªÊ¼ÏÂÔØ
+			//å¦‚æœæ­£åœ¨è®¿é—®åˆå§‹ä¸‹è½½é¡µé¢ä¸”è·å¾—500ï¼Œè¯´æ˜æ˜¯åˆ†æ®µä¸‹è½½ï¼Œæ­¤æ—¶åˆå§‹ç½‘å€ä¸ä¸€æ ·(ä¸ºhttps://www.dlsite.com/maniax/download/split/=/product_id/%1.html)
+			//æ²¡å¿…è¦è·å–æ€»ä¸‹è½½é¡µï¼Œç›´æ¥ä»ç¬¬ä¸€æ®µå¼€å§‹ä¸‹è½½
 			if (url.find("https://www.dlsite.com/maniax/download/=/product_id/") != std::string::npos)
 				url = Format("https://www.dlsite.com/maniax/download/=/number/%d/product_id/%s.html", ++idx, id.c_str());
 			else
@@ -292,17 +292,17 @@ Task DLSiteClient::TryDownloadWork(std::string id,cpr::Cookies cookie, cpr::User
 			QString type = res.header["Content-Type"].c_str();
 			if (type.contains("application/zip") || type.contains("binary/octet-stream") 
 				|| type.contains("application/octet-stream") || type.contains("application/octet-stream") 
-				|| type.contains("application/x-msdownload") || type.contains("application/x-rar-compressed"))//»ñÈ¡µ½ÕæÊµµØÖ·
+				|| type.contains("application/x-msdownload") || type.contains("application/x-rar-compressed"))//è·å–åˆ°çœŸå®åœ°å€
 			{
 				std::string ext;
 				std::string file_name;
 				std::regex reg("filename=\"(.*)\"");
 				auto header_disposition = res.header["Content-Disposition"];
-				//´ÓÎÄ¼şÍ·ÖĞ³¢ÊÔÕÒÎÄ¼şÃû
+				//ä»æ–‡ä»¶å¤´ä¸­å°è¯•æ‰¾æ–‡ä»¶å
 				std::smatch reg_result;
 				if (std::regex_search(header_disposition, reg_result, reg))
-					file_name = reg_result[1];//0ÊÇÍêÕû½á¹û£¬1ÊÇµÚÒ»¸öÀ¨ºÅ
-				else//´ÓÍøÖ·ÖĞÕÒ
+					file_name = reg_result[1];//0æ˜¯å®Œæ•´ç»“æœï¼Œ1æ˜¯ç¬¬ä¸€ä¸ªæ‹¬å·
+				else//ä»ç½‘å€ä¸­æ‰¾
 				{
 					std::regex reg("file/(.*)/");
 					if (std::regex_match(url, reg_result, reg))
@@ -318,26 +318,26 @@ Task DLSiteClient::TryDownloadWork(std::string id,cpr::Cookies cookie, cpr::User
 				if (!ext.empty())
 					task.download_ext.insert(ext);
 
-				if (idx == 0)//µ¥¶ÎÏÂÔØ
+				if (idx == 0)//å•æ®µä¸‹è½½
 				{
 					task.ready = true;
 					break;
 				}
-				else //¶à¶ÎÏÂÔØ£¬³¢ÊÔÏÂÒ»¶Î
+				else //å¤šæ®µä¸‹è½½ï¼Œå°è¯•ä¸‹ä¸€æ®µ
 					url = Format("https://www.dlsite.com/maniax/download/=/number/%d/product_id/%s.html", ++idx, id.c_str());
 			}
-			else//Ê§°Ü£¬Èç¹ûtypeÊÇhtml£¬Í¨³£ÊÇÒòÎªµÇÂ¼Ê§°Ü/·ÃÎÊÏÂÔØÒ³Ê§°Ü£¬·µ»Ø×¢²áÒ³/´íÎóÒ³
+			else//å¤±è´¥ï¼Œå¦‚æœtypeæ˜¯htmlï¼Œé€šå¸¸æ˜¯å› ä¸ºç™»å½•å¤±è´¥/è®¿é—®ä¸‹è½½é¡µå¤±è´¥ï¼Œè¿”å›æ³¨å†Œé¡µ/é”™è¯¯é¡µ
 				break;
 		}
-		else if (res.status_code == 404 && idx > 1)//¶à¶ÎÏÂÔØµ½´ïÄ©Î²
+		else if (res.status_code == 404 && idx > 1)//å¤šæ®µä¸‹è½½åˆ°è¾¾æœ«å°¾
 		{
 			task.ready = true;
 			break;
 		}
-		else//Ê§°Ü
+		else//å¤±è´¥
 			break;
 	}
-	//ÓĞµÄ×÷Æ·»á±»É¾³ı£¬Àı:RJ320458
+	//æœ‰çš„ä½œå“ä¼šè¢«åˆ é™¤ï¼Œä¾‹:RJ320458
 	if (!task.ready)
 		qDebug() << "Receive " << id.c_str() << " Error:";
 	return task;
@@ -350,15 +350,15 @@ WorkType DLSiteClient::GetWorkTypeFromWeb(const std::string& page,const std::str
 	<a href="https://www.dlsite.com/maniax/fsr/=/work_category%5B0%5D/doujin/file_type/IJP/from/icon.work">
 	<span class="icon_IJP" title="JPEG">JPEG</span></a>
 	<a href="https://www.dlsite.com/maniax/fsr/=/work_category%5B0%5D/doujin/options/WPD/from/icon.work">
-	<span class="icon_WPD" title="PDFÍ¬À¦">PDFÍ¬À¦</span>
+	<span class="icon_WPD" title="PDFåŒæ†">PDFåŒæ†</span>
 	</a>
 	</div>*/
 	std::set<std::string> types;
 	std::regex reg("class=\"icon_([A-Z0-9]{1,10})\"");
 	int cursor = 0;
 	int start = -1;
-	//ÕÒµ½ËùÓĞwork_genreÀàµÄdivÀïµÄËùÓĞÍ¼±êÀà,¼´"×÷Æ·ĞÎÊ½"¡¢"¥Õ¥¡¥¤¥ëĞÎÊ½"¡¢"ÄêıhÖ¸¶¨"¡¢"¤½¤ÎËû"
-	//ÓĞµÄ×÷Æ·½öÓĞ×÷Æ·ĞÎÊ½ÈçVJ015443
+	//æ‰¾åˆ°æ‰€æœ‰work_genreç±»çš„divé‡Œçš„æ‰€æœ‰å›¾æ ‡ç±»,å³"ä½œå“å½¢å¼"ã€"ãƒ•ã‚¡ã‚¤ãƒ«å½¢å¼"ã€"å¹´é½¢æŒ‡å®š"ã€"ãã®ä»–"
+	//æœ‰çš„ä½œå“ä»…æœ‰ä½œå“å½¢å¼å¦‚VJ015443
 	while ((start = page.find("class=\"work_genre\"", cursor)) > 0)
 	{
 		start += std::string("class=\"work_genre\"").size();
@@ -370,40 +370,40 @@ WorkType DLSiteClient::GetWorkTypeFromWeb(const std::string& page,const std::str
 			types.insert(result[1]);
 		cursor = end;
 	}
-	//×¢ÒâË³Ğò£¬¸ù¾İ¤½¤ÎËû¡¢ÎÄ¼şĞÎÊ½¡¢×÷Æ·ĞÎÊ½ÅĞ¶Ï
-	//ÒòÎªÓĞµÄ×÷Æ·¸ñÊ½¸úÒ»°ãµÄ²»Ò»ÖÂ
-	if (types.count("OTM"))//¤½¤ÎËû:ÒÒÅ®Ïò¤± ¡ù×îÓÅÏÈ
+	//æ³¨æ„é¡ºåºï¼Œæ ¹æ®ãã®ä»–ã€æ–‡ä»¶å½¢å¼ã€ä½œå“å½¢å¼åˆ¤æ–­
+	//å› ä¸ºæœ‰çš„ä½œå“æ ¼å¼è·Ÿä¸€èˆ¬çš„ä¸ä¸€è‡´
+	if (types.count("OTM"))//ãã®ä»–:ä¹™å¥³å‘ã‘ â€»æœ€ä¼˜å…ˆ
 		return WorkType::SHIT;
-	else if (types.count("WBO"))//ÎÄ¼şĞÎÊ½:ä¯ÀÀÆ÷×¨ÓÃ£¬²»ÏÂÔØ
+	else if (types.count("WBO"))//æ–‡ä»¶å½¢å¼:æµè§ˆå™¨ä¸“ç”¨ï¼Œä¸ä¸‹è½½
 		return WorkType::CANTDOWNLOAD;
-	else if (types.count("EXE"))//ÎÄ¼şĞÎÊ½:Èí¼ş
+	else if (types.count("EXE"))//æ–‡ä»¶å½¢å¼:è½¯ä»¶
 		return WorkType::PROGRAM;
-	else if (types.count("MP4")|| types.count("MWM"))//ÎÄ¼şĞÎÊ½:MP4¡¢WMV
+	else if (types.count("MP4")|| types.count("MWM"))//æ–‡ä»¶å½¢å¼:MP4ã€WMV
 		return WorkType::VIDEO;
-	else if (types.count("ADO"))//ÎÄ¼şĞÎÊ½:¥ª©`¥Ç¥£¥ª(audio)
+	else if (types.count("ADO"))//æ–‡ä»¶å½¢å¼:ã‚ªãƒ¼ãƒ‡ã‚£ã‚ª(audio)
 		return WorkType::AUDIO;
-	else if (types.count("MP3") || types.count("WAV") || types.count("FLC") || types.count("WMA")|| types.count("AAC"))//ÎÄ¼şĞÎÊ½:MP3¡¢WAV¡¢FLAC¡¢WMA¡¢AAC
+	else if (types.count("MP3") || types.count("WAV") || types.count("FLC") || types.count("WMA")|| types.count("AAC"))//æ–‡ä»¶å½¢å¼:MP3ã€WAVã€FLACã€WMAã€AAC
 		return WorkType::AUDIO;
-	else if (types.count("IJP") || types.count("PNG") || types.count("IBP") || types.count("HTI"))//ÎÄ¼şĞÎÊ½:JPEG¡¢BMP¡¢HTML+Í¼Æ¬
+	else if (types.count("IJP") || types.count("PNG") || types.count("IBP") || types.count("HTI"))//æ–‡ä»¶å½¢å¼:JPEGã€BMPã€HTML+å›¾ç‰‡
 		return WorkType::PICTURE;
-	else if (types.count("SOU") || types.count("MUS"))//×÷Æ·ÀàĞÍ:ÒôÉùsound¡¢ÒôÀÖmusic(ÆäËüÀàĞÍµÄ×÷Æ·º¬ÓĞÒôÀÖÊÇMS2)
+	else if (types.count("SOU") || types.count("MUS"))//ä½œå“ç±»å‹:éŸ³å£°soundã€éŸ³ä¹music(å…¶å®ƒç±»å‹çš„ä½œå“å«æœ‰éŸ³ä¹æ˜¯MS2)
 		return WorkType::AUDIO;
 	else if (types.count("RPG") || types.count("ACN") || types.count("STG") || types.count("SLN") || types.count("ADV")
 		|| types.count("DNV") || types.count("PZL") || types.count("TYP") || types.count("QIZ")
 		|| types.count("TBL") || types.count("ETC"))
-		//×÷Æ·ÀàĞÍ:RPG¡¢¶¯×÷¡¢Éä»÷¡¢Ä£Äâ¡¢Ã°ÏÕ¡¢µç×ÓĞ¡Ëµ¡¢ÒæÖÇ(ÉñtmR18ÒæÖÇ)¡¢´ò×Ö¡¢½âÃÕ¡¢×ÀÃæ¡¢ÆäËü
+		//ä½œå“ç±»å‹:RPGã€åŠ¨ä½œã€å°„å‡»ã€æ¨¡æ‹Ÿã€å†’é™©ã€ç”µå­å°è¯´ã€ç›Šæ™º(ç¥tmR18ç›Šæ™º)ã€æ‰“å­—ã€è§£è°œã€æ¡Œé¢ã€å…¶å®ƒ
 		return WorkType::PROGRAM;
-	else if (types.count("MOV"))//×÷Æ·ÀàĞÍ:ÊÓÆµ
+	else if (types.count("MOV"))//ä½œå“ç±»å‹:è§†é¢‘
 		return WorkType::VIDEO;
-	else if (types.count("MNG") || types.count("ICG"))//×÷Æ·ÀàĞÍ:Âş»­¡¢CG
+	else if (types.count("MNG") || types.count("ICG"))//ä½œå“ç±»å‹:æ¼«ç”»ã€CG
 		return WorkType::PICTURE;
-	else if (types.count("PVA"))//ÎÄ¼şĞÎÊ½:×¨ÓÃä¯ÀÀÆ÷£¬Í¨³£ºÍWPDÒ»Æğ³öÏÖ²¢ÇÒÊÇÍ¼Æ¬ÀàĞÍ£¬µ«ÊÇ²»ÄÜÈçÍ¬Í¼Æ¬Ò»°ã´ò¿ª£¬ÊÓ×÷ÆäËü
+	else if (types.count("PVA"))//æ–‡ä»¶å½¢å¼:ä¸“ç”¨æµè§ˆå™¨ï¼Œé€šå¸¸å’ŒWPDä¸€èµ·å‡ºç°å¹¶ä¸”æ˜¯å›¾ç‰‡ç±»å‹ï¼Œä½†æ˜¯ä¸èƒ½å¦‚åŒå›¾ç‰‡ä¸€èˆ¬æ‰“å¼€ï¼Œè§†ä½œå…¶å®ƒ
 		return WorkType::OTHER;
-	else if (types.count("WPD") || types.count("PDF") || types.count("HTF"))//ÎÄ¼şĞÎÊ½:×¨ÓÃä¯ÀÀÆ÷¡¢PDFÍ¬À¦¡¢PDF¡¢HTML(flash)£¬ÎŞ·¨È·¶¨ÀàĞÍ
+	else if (types.count("WPD") || types.count("PDF") || types.count("HTF"))//æ–‡ä»¶å½¢å¼:ä¸“ç”¨æµè§ˆå™¨ã€PDFåŒæ†ã€PDFã€HTML(flash)ï¼Œæ— æ³•ç¡®å®šç±»å‹
 		return WorkType::OTHER;
-	else if (types.count("AVI"))//ÎÄ¼şĞÎÊ½:AVI£¬ÎŞ·¨È·¶¨ÀàĞÍ
+	else if (types.count("AVI"))//æ–‡ä»¶å½¢å¼:AVIï¼Œæ— æ³•ç¡®å®šç±»å‹
 		return WorkType::OTHER;
-	else if (types.count("ET3"))//×÷Æ·ÀàĞÍ:ÆäËü,ÎŞ·¨È·¶¨ÀàĞÍ
+	else if (types.count("ET3"))//ä½œå“ç±»å‹:å…¶å®ƒ,æ— æ³•ç¡®å®šç±»å‹
 		return WorkType::OTHER;
 	LogError("Cant identify type: %s",id.c_str());
 	return WorkType::OTHER;
@@ -416,7 +416,7 @@ void DLSiteClient::StartDownload(const QByteArray& _cookies, const QByteArray& _
 		LogError("Busy. Reject Download Request\n");
 		return;
 	}
-	//ÒòÎª¶¼ÊÇÔÚÖ÷Ïß³ÌÔËĞĞ£¬ËùÒÔÕâÀï²»ĞèÒªÓÃÔ­×Ó²Ù×÷
+	//å› ä¸ºéƒ½æ˜¯åœ¨ä¸»çº¿ç¨‹è¿è¡Œï¼Œæ‰€ä»¥è¿™é‡Œä¸éœ€è¦ç”¨åŸå­æ“ä½œ
 	running = true;
 	cpr::Cookies cookies;
 	for (auto&pair : _cookies.split(';'))
@@ -435,15 +435,15 @@ void DLSiteClient::StartDownload(const QByteArray& _cookies, const QByteArray& _
 DLSiteClient::WorkInfo DLSiteClient::FetchWorksInfo(const QString& work_id)
 {
 	WorkInfo ret;
-	cpr::Session session;//²»ĞèÒªcookie
+	cpr::Session session;//ä¸éœ€è¦cookie
 	session.SetVerifySsl(cpr::VerifySsl{ false });
 	session.SetProxies(cpr::Proxies{ {std::string("https"), DLConfig::REQUEST_PROXY} });
 	session.SetHeader(cpr::Header{ {"user-agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"} });
 	session.SetRedirect(true);
 	/*
-	* ·­Òë×÷Æ··ÖÁ½ÖÖ£º¶ÀÁ¢£¬×éºÏ
-	* ÆäÖĞ"×éºÏ"µÄtranslation_infoµÄis_parent/is_childÎªÕæ£¬parent_workno/child_worknos²»Îª¿Õ£¬ĞÎÈç
-	(RJ01018122×Ó)"translation_info": {
+	* ç¿»è¯‘ä½œå“åˆ†ä¸¤ç§ï¼šç‹¬ç«‹ï¼Œç»„åˆ
+	* å…¶ä¸­"ç»„åˆ"çš„translation_infoçš„is_parent/is_childä¸ºçœŸï¼Œparent_workno/child_worknosä¸ä¸ºç©ºï¼Œå½¢å¦‚
+	(RJ01018122å­)"translation_info": {
 	  "is_translation_agree": false,
 	  "is_volunteer": false,
 	  "is_original": false,
@@ -457,7 +457,7 @@ DLSiteClient::WorkInfo DLSiteClient::FetchWorksInfo(const QString& work_id)
 	  "production_trade_price_rate": 0,
 	  "translation_bonus_langs": []
 	}
-	(RJ01018121¸¸)"translation_info": {
+	(RJ01018121çˆ¶)"translation_info": {
 	  "is_translation_agree": false,
 	  "is_volunteer": false,
 	  "is_original": false,
@@ -471,16 +471,16 @@ DLSiteClient::WorkInfo DLSiteClient::FetchWorksInfo(const QString& work_id)
 	  "production_trade_price_rate": 0,
 	  "translation_bonus_langs": []
 	},
-	ÓĞµÄ
-	Ä¿Ç°Ö»¼û¹ıÒ»²ã×éºÏ¹ØÏµ	
-	×éºÏ×÷Æ·µÄ¸¸¡¢×ÓÓĞ¸÷×ÔµÄRJºÅ£¬Ê¹ÓÃ¸¸/×ÓRJºÅ¾ùÄÜ·ÃÎÊµ½¸Ã·­Òë×÷Æ·µÄÍøÒ³£¬µ«ÊÇ×Ó×÷Æ·µÄurl»á±»ÖØ¶¨ÏòÖÁĞÎÈçmaniax/work/=/product_id/{¸¸RJºÅ}.html/?translation={×ÓRJºÅ}
-	ÓÉÓÚ¸¸×÷Æ·Ò²ÓĞlang£¬ÍÆ²âÒ»¸ö¸¸×÷Æ·µÄËùÓĞ×Ó×÷Æ·¶¼ÊÇÍ¬Ò»ÓïÑÔ
-	Ò»¸¸¿ÉÒÔÓĞ¶à×Ó£¬ÈçRJ01000889£¬µ«ÊÇÃ»¿´³öÀ´¶à¸ö×Ó×÷Æ·ÓĞÊ²Ã´Çø±ğ
-	²¿·Ö×Ó×÷Æ·ÈçRJ01000890ÎŞ·¨»ñÈ¡µ½info£¬Ö»ÓĞ¸¸×÷Æ·¿ÉÒÔ»ñÈ¡µ½
+	æœ‰çš„
+	ç›®å‰åªè§è¿‡ä¸€å±‚ç»„åˆå…³ç³»	
+	ç»„åˆä½œå“çš„çˆ¶ã€å­æœ‰å„è‡ªçš„RJå·ï¼Œä½¿ç”¨çˆ¶/å­RJå·å‡èƒ½è®¿é—®åˆ°è¯¥ç¿»è¯‘ä½œå“çš„ç½‘é¡µï¼Œä½†æ˜¯å­ä½œå“çš„urlä¼šè¢«é‡å®šå‘è‡³å½¢å¦‚maniax/work/=/product_id/{çˆ¶RJå·}.html/?translation={å­RJå·}
+	ç”±äºçˆ¶ä½œå“ä¹Ÿæœ‰langï¼Œæ¨æµ‹ä¸€ä¸ªçˆ¶ä½œå“çš„æ‰€æœ‰å­ä½œå“éƒ½æ˜¯åŒä¸€è¯­è¨€
+	ä¸€çˆ¶å¯ä»¥æœ‰å¤šå­ï¼Œå¦‚RJ01000889ï¼Œä½†æ˜¯æ²¡çœ‹å‡ºæ¥å¤šä¸ªå­ä½œå“æœ‰ä»€ä¹ˆåŒºåˆ«
+	éƒ¨åˆ†å­ä½œå“å¦‚RJ01000890æ— æ³•è·å–åˆ°infoï¼Œåªæœ‰çˆ¶ä½œå“å¯ä»¥è·å–åˆ°
 	
-	Ôİ¶¨£ºÊÓ×÷ËùÓĞ¸¸×ÓÁ½Á½µÈ¼Û(¼´Ë«Ïò¸²¸Ç)
+	æš‚å®šï¼šè§†ä½œæ‰€æœ‰çˆ¶å­ä¸¤ä¸¤ç­‰ä»·(å³åŒå‘è¦†ç›–)
 	*
-	* ¶àÓïÑÔ°æ±¾ÔÚdl_count_itemsÖĞĞÎÈç
+	* å¤šè¯­è¨€ç‰ˆæœ¬åœ¨dl_count_itemsä¸­å½¢å¦‚
 	"dl_count_items": [
 	  {
 		"workno": "RJ380627",
@@ -501,24 +501,24 @@ DLSiteClient::WorkInfo DLSiteClient::FetchWorksInfo(const QString& work_id)
 		"display_label": "\u7e41\u4f53\u4e2d\u6587"
 	  }
 	]
-	ÆäÖĞ×ÜÊÇ½ö°üº¬¶ÀÁ¢×÷Æ·ºÍ¸¸×÷Æ·£¬Òò´ËĞèÒªÁíÍâ²éÑ¯×Ó×÷Æ·
-	°üº¬×Ô¼º
-	edition_typeËÆºõ×ÜÊÇÎªlanguage
-	±¾Ìå/×·¼Óvoice/ÍêÈ«°æ/ÎŞÁÏ°æµÈĞÅÏ¢ËÆºõ²»»á³öÏÖÔÚ´Ë´¦
-	Òò´Ëdl_count_items°üº¬µÄ×÷Æ·¼°Æä×Ó×÷Æ·¾ùÊÓ×÷Á½Á½µÈ¼Û
+	å…¶ä¸­æ€»æ˜¯ä»…åŒ…å«ç‹¬ç«‹ä½œå“å’Œçˆ¶ä½œå“ï¼Œå› æ­¤éœ€è¦å¦å¤–æŸ¥è¯¢å­ä½œå“
+	åŒ…å«è‡ªå·±
+	edition_typeä¼¼ä¹æ€»æ˜¯ä¸ºlanguage
+	æœ¬ä½“/è¿½åŠ voice/å®Œå…¨ç‰ˆ/æ— æ–™ç‰ˆç­‰ä¿¡æ¯ä¼¼ä¹ä¸ä¼šå‡ºç°åœ¨æ­¤å¤„
+	å› æ­¤dl_count_itemsåŒ…å«çš„ä½œå“åŠå…¶å­ä½œå“å‡è§†ä½œä¸¤ä¸¤ç­‰ä»·
 	*/
 	QStringList parent_works;
 	{
 		auto work_info_pair = GetWorkInfoFromDLSiteAPI(session, work_id);
 		ret.work_info_text = work_info_pair.first;
 		QJsonObject work_info = work_info_pair.second;
-		//if (work_info.isEmpty())//Èç¹ûwork_info.isEmpty()ÄÇÃ´!work_info.contains("dl_count_items")Ò»¶¨ÎªÕæ
+		//if (work_info.isEmpty())//å¦‚æœwork_info.isEmpty()é‚£ä¹ˆ!work_info.contains("dl_count_items")ä¸€å®šä¸ºçœŸ
 			//return ret;
-		//¼ì²é±êÇ©
+		//æ£€æŸ¥æ ‡ç­¾
 		if (work_info.contains("options"))
-			if (work_info.value("options").toString().contains("OTM"))//ÒÒÅ®Ïò
+			if (work_info.value("options").toString().contains("OTM"))//ä¹™å¥³å‘
 				ret.is_otm = true;
-		//ÕÒµ½ËùÓĞdl_count_items
+		//æ‰¾åˆ°æ‰€æœ‰dl_count_items
 		if (work_info.contains("dl_count_items"))
 			for (const QJsonValue& item : work_info.value("dl_count_items").toArray())
 				if(item.isObject()&&!item.toObject().empty())
@@ -532,7 +532,7 @@ DLSiteClient::WorkInfo DLSiteClient::FetchWorksInfo(const QString& work_id)
 					parent_works += object.value("workno").toString();
 				}
 	}
-	//ÕÒµ½ËùÓĞdl_count_items°üº¬µÄ×Ó×÷Æ·
+	//æ‰¾åˆ°æ‰€æœ‰dl_count_itemsåŒ…å«çš„å­ä½œå“
 	ret.translations = parent_works;
 	for (const auto& subwork_id : parent_works)
 	{
@@ -544,9 +544,9 @@ DLSiteClient::WorkInfo DLSiteClient::FetchWorksInfo(const QString& work_id)
 		auto translation_info = work_info.value("translation_info").toObject();
 		if (translation_info.empty())
 			continue;
-		if (!translation_info.value("is_parent").toBool())//¶ÀÁ¢×÷Æ·
+		if (!translation_info.value("is_parent").toBool())//ç‹¬ç«‹ä½œå“
 			continue;
-		if (translation_info.value("is_child").toBool())//²»Ó¦¸Ã³öÏÖ×Ó×÷Æ·
+		if (translation_info.value("is_child").toBool())//ä¸åº”è¯¥å‡ºç°å­ä½œå“
 		{
 			throw "Unknown Situation";
 			return ret;
@@ -562,7 +562,7 @@ void DLSiteClient::StartRename(const QStringList& _files)
 {
 	if (this->running)
 		return;
-	//ÒòÎª¶¼ÊÇÔÚÖ÷Ïß³ÌÔËĞĞ£¬ËùÒÔÕâÀï²»ĞèÒªÓÃÔ­×Ó²Ù×÷
+	//å› ä¸ºéƒ½æ˜¯åœ¨ä¸»çº¿ç¨‹è¿è¡Œï¼Œæ‰€ä»¥è¿™é‡Œä¸éœ€è¦ç”¨åŸå­æ“ä½œ
 	running = true;
 	QStringList local_files;
 	for (const auto& file : _files)

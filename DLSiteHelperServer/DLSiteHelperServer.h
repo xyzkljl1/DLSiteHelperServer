@@ -1,14 +1,12 @@
-#pragma once
+Ôªø#pragma once
 #include "DLSiteClient.h"
 #include "DLConfig.h"
 #include <QStringList>
 #include <QTimer>
-#include "tufao/HttpServer"
-#include "Tufao/HttpServerRequest"
-#include "Tufao/HttpServerResponse"
-#include "Tufao/Headers"
+#include <QRegExp>
+#include <QtHttpServer/QHttpServer>
 
-class DLSiteHelperServer:public Tufao::HttpServer
+class DLSiteHelperServer:public QObject
 {
 	Q_OBJECT
 public:
@@ -17,8 +15,8 @@ public:
 	static QRegExp GetWorkNameExpSep();
 	static QString GetIDFromDirName(QString dir);
 protected:
-	void HandleRequest(Tufao::HttpServerRequest &request, Tufao::HttpServerResponse &response);
-	void ReplyText(Tufao::HttpServerResponse & response, const Tufao::HttpResponseStatus&status, const QString & message);
+	void HandleRequest(const QHttpServerRequest& request, QHttpServerResponder&& responseresponse);
+	void ReplyText(QHttpServerResponder&& responder, const QHttpServerResponder::StatusCode& status = QHttpServerResponder::StatusCode::Ok, const QString& message = "Success");
 	
 	QString GetAllInvalidWorksString();
 	QString GetAllOverlapWorksString();
@@ -27,12 +25,13 @@ protected:
 	std::map<std::string, std::set<std::string>> GetAllOverlapWorks();
 	void DailyTask();
 	void SyncLocalFileToDB();
-	void FetchWorkInfo(int limit=100);//¥”DLSiteªÒ»°workinfo≤¢¥Ê»Î ˝æ›ø‚
+	void FetchWorkInfo(int limit=100);//‰ªéDLSiteËé∑ÂèñworkinfoÂπ∂Â≠òÂÖ•Êï∞ÊçÆÂ∫ì
 	void DownloadAll(const QByteArray& cookie, const QByteArray& user_agent);
 	void RenameLocal();
 	QStringList GetLocalFiles(const QStringList& root);
 protected:
 	DLSiteClient client;
+	QHttpServer qserver;
 	QTimer daily_timer;
 };
 

@@ -1,7 +1,7 @@
-#pragma once
+ï»¿#pragma once
 #include "BaseDownloader.h"
 class QProcess;
-//Ïß³Ì²»°²È«
+//çº¿ç¨‹ä¸å®‰å…¨
 class Aria2Downloader:public BaseDownloader
 {
 	Q_OBJECT
@@ -19,10 +19,10 @@ public:
 	bool StartDownload(const std::vector<Task>& _tasks, const cpr::Cookies& _cookie, const cpr::UserAgent& _user_agent) override;
 protected:
 	void CheckThread();
-	//¼ì²éÈÎÎñ×´Ì¬£¬Èç²»Õı³£ÔòÖØĞÂ»ñÈ¡cookie²¢ÖØÆôÈÎÎñ£¬is_first_timeÎªÕæÊ±ÊÇµÚÒ»´ÎÖ´ĞĞ
-	//È«²¿Íê³É»òÎŞ·¨¼ÌĞøÊ±·µ»Øtrue
+	//æ£€æŸ¥ä»»åŠ¡çŠ¶æ€ï¼Œå¦‚ä¸æ­£å¸¸åˆ™é‡æ–°è·å–cookieå¹¶é‡å¯ä»»åŠ¡ï¼Œis_first_timeä¸ºçœŸæ—¶æ˜¯ç¬¬ä¸€æ¬¡æ‰§è¡Œ
+	//å…¨éƒ¨å®Œæˆæˆ–æ— æ³•ç»§ç»­æ—¶è¿”å›true
 	bool CheckTaskStatus(bool init);
-	//¼ì²éAria2(³ÌĞò×ÔÉí)µÄ×´Ì¬£¬Èç²»Õı³£ÔòÖØÆô£¬±ØĞëÔÚÖ÷Ïß³ÌÖ´ĞĞ
+	//æ£€æŸ¥Aria2(ç¨‹åºè‡ªèº«)çš„çŠ¶æ€ï¼Œå¦‚ä¸æ­£å¸¸åˆ™é‡å¯ï¼Œå¿…é¡»åœ¨ä¸»çº¿ç¨‹æ‰§è¡Œ
 	void CheckAria2Status(bool init);
 
 	std::vector<Aria2Task> task_list;

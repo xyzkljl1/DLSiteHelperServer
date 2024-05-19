@@ -12,9 +12,9 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{8D734F61-66B6-4BBC-B6A2-660872F34271}</ProjectGuid>
-    <Keyword>QtVS_v303</Keyword>
+    <Keyword>QtVS_v304</Keyword>
     <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">10.0</WindowsTargetPlatformVersion>
-    <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">10.0.16299.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">10.0</WindowsTargetPlatformVersion>
     <QtMsBuild Condition="'$(QtMsBuild)'=='' OR !Exists('$(QtMsBuild)\qt.targets')">$(MSBuildProjectDirectory)\QtMsBuild</QtMsBuild>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -27,66 +27,87 @@
     <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
-  <Target Name="QtMsBuildNotFound" BeforeTargets="CustomBuild;ClCompile" Condition="!Exists('$(QtMsBuild)\qt.targets') or !Exists('$(QtMsBuild)\qt.props')">
+  <Import Project="$(QtMsBuild)\qt_defaults.props" Condition="Exists('$(QtMsBuild)\qt_defaults.props')" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="QtSettings">
+    <QtInstall>6.7.0_msvc2019_64</QtInstall>
+    <QtModules>core;network;widgets;core5compat;httpserver</QtModules>
+    <QtBuildConfig>debug</QtBuildConfig>
+    <QMakeExtraArgs>
+    </QMakeExtraArgs>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="QtSettings">
+    <QtInstall>6.7.0_msvc2019_64</QtInstall>
+    <QtModules>core;network;widgets;core5compat;httpserver</QtModules>
+    <QtBuildConfig>release</QtBuildConfig>
+    <QMakeExtraArgs>
+    </QMakeExtraArgs>
+  </PropertyGroup>
+  <Target Name="QtMsBuildNotFound" BeforeTargets="CustomBuild;ClCompile" Condition="!Exists('$(QtMsBuild)\qt.targets') OR !Exists('$(QtMsBuild)\Qt.props')">
     <Message Importance="High" Text="QtMsBuild: could not locate qt.targets, qt.props; project may not build correctly." />
   </Target>
   <ImportGroup Label="ExtensionSettings" />
   <ImportGroup Label="Shared" />
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(QtMsBuild)\Qt.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(QtMsBuild)\Qt.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <ImportGroup Condition="Exists('$(QtMsBuild)\qt_defaults.props')">
-    <Import Project="$(QtMsBuild)\qt_defaults.props" />
-  </ImportGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
-    <IncludePath>$(SolutionDir)dependencies\mysql\include;$(IncludePath);$(SolutionDir)dependencies\cpr\include;$(SolutionDir)dependencies\tufao\include</IncludePath>
-    <LibraryPath>$(SolutionDir)dependencies\mysql\lib;$(SolutionDir)dependencies\cpr\lib\$(Configuration);$(SolutionDir)dependencies\tufao\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(SolutionDir)dependencies\mysql\include;$(IncludePath);$(SolutionDir)dependencies\cpr\include</IncludePath>
+    <LibraryPath>$(SolutionDir)dependencies\mysql\lib;$(SolutionDir)dependencies\cpr\lib\$(Configuration);$(LibraryPath)</LibraryPath>
     <ReferencePath>$(ReferencePath)</ReferencePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
-    <IncludePath>$(SolutionDir)dependencies\mysql\include;$(IncludePath);$(SolutionDir)dependencies\cpr\include;$(SolutionDir)dependencies\tufao\include</IncludePath>
-    <LibraryPath>$(SolutionDir)dependencies\mysql\lib;$(SolutionDir)dependencies\cpr\lib\$(Configuration);$(SolutionDir)dependencies\tufao\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(SolutionDir)dependencies\mysql\include;$(IncludePath);$(SolutionDir)dependencies\cpr\include</IncludePath>
+    <LibraryPath>$(SolutionDir)dependencies\mysql\lib;$(SolutionDir)dependencies\cpr\lib\$(Configuration);$(LibraryPath)</LibraryPath>
     <ReferencePath>$(ReferencePath)</ReferencePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Link>
-      <AdditionalDependencies>tufao1d.lib;cpr.lib;libmysql.lib;%(AdditionalDependencies);</AdditionalDependencies>
+      <AdditionalDependencies>cpr.lib;libmysql.lib;%(AdditionalDependencies);</AdditionalDependencies>
       <AdditionalOptions>/NODEFAULTLIB:library %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <PostBuildEvent>
       <Command>echo D|xcopy "$(SolutionDir)dependencies\aria2" "$(TargetDir)aria2" /y /C
 echo D|xcopy "$(SolutionDir)dependencies\7z" "$(TargetDir)7z" /y /C
-echo D|xcopy "$(SolutionDir)config.json" "$(TargetDir)" /y /C</Command>
+echo D|xcopy "$(SolutionDir)config.json" "$(TargetDir)" /y /C
+</Command>
     </PostBuildEvent>
+    <ClCompile>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <BuildStlModules>true</BuildStlModules>
+      <EnableModules>true</EnableModules>
+      <ConformanceMode>true</ConformanceMode>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <CompileAs>Default</CompileAs>
+    </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Link>
-      <AdditionalDependencies>tufao1.lib;cpr.lib;libmysql.lib;%(AdditionalDependencies);</AdditionalDependencies>
+      <AdditionalDependencies>cpr.lib;libmysql.lib;%(AdditionalDependencies);</AdditionalDependencies>
       <AdditionalOptions>/NODEFAULTLIB:library %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <PostBuildEvent>
       <Command>echo D|xcopy "$(SolutionDir)dependencies\aria2" "$(TargetDir)aria2" /y /C
 echo D|xcopy "$(SolutionDir)dependencies\7z" "$(TargetDir)7z" /y /C
-echo D|xcopy "$(SolutionDir)config.json" "$(TargetDir)" /y /C</Command>
+echo D|xcopy "$(SolutionDir)config.json" "$(TargetDir)" /y /C
+echo D|xcopy "$(QtDllPath)/Qt6Network.dll" "$(TargetDir)" /y /C
+echo D|xcopy "$(QtDllPath)/Qt6Networkd.dll" "$(TargetDir)" /y /C
+</Command>
     </PostBuildEvent>
+    <ClCompile>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <BuildStlModules>true</BuildStlModules>
+      <EnableModules>true</EnableModules>
+      <ConformanceMode>true</ConformanceMode>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <CompileAs>Default</CompileAs>
+    </ClCompile>
   </ItemDefinitionGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="QtSettings">
-    <QtInstall>msvc2017_64</QtInstall>
-    <QtModules>core;network;widgets;</QtModules>
-    <QtBuildConfig>debug</QtBuildConfig>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="QtSettings">
-    <QtInstall>msvc2017_64</QtInstall>
-    <QtModules>core;network;widgets;</QtModules>
-    <QtBuildConfig>release</QtBuildConfig>
-  </PropertyGroup>
-  <ImportGroup Condition="Exists('$(QtMsBuild)\qt.props')">
-    <Import Project="$(QtMsBuild)\qt.props" />
-  </ImportGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="Configuration">
     <ClCompile>
       <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
@@ -123,6 +144,7 @@ echo D|xcopy "$(SolutionDir)config.json" "$(TargetDir)" /y /C</Command>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MyFakeWindow.cpp" />
     <ClCompile Include="Util.cpp" />
+    <ClCompile Include="Util2.ixx" />
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="Aria2Downloader.h" />
@@ -145,9 +167,7 @@ echo D|xcopy "$(SolutionDir)config.json" "$(TargetDir)" /y /C</Command>
     <Image Include="icon1.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">
-    <Import Project="$(QtMsBuild)\qt.targets" />
-  </ImportGroup>
+  <Import Project="$(QtMsBuild)\qt.targets" Condition="Exists('$(QtMsBuild)\qt.targets')" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
 </Project>

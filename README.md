@@ -8,8 +8,8 @@ Only support Windows x64
 
 
 ## Build and Run  
-安装Qt5.14、VS2017、mysql server(>=8.0)  
-将openssl/tufao/cpr/mysql的dll(在库里)以及Qt的dll(自行安装)加入环境路径或拷贝到运行目录  
+安装Qt6.7.0、VS2022、mysql server(>=8.0)  
+将openssl/cpr/mysql的dll(在库里)以及Qt的dll(自行安装)加入环境路径或拷贝到运行目录  
 在本地指定端口(默认4321)运行mysql服务端，使用build_database.sql创建数据库  
 于本地指定端口(默认8000)运行代理  
 在Chrome上登录DLSite并运行DLSiteHelper插件  
@@ -17,8 +17,8 @@ Only support Windows x64
 确保程序要使用的端口(默认4567/4319)空闲  
 
 
-Install Qt5.14、VS2017、mysql server(>=8.0)  
-Copy dll files in openssl/tufao/cpr/mysql directory and Qt installation dir to work directory  
+Install Qt6.7.0、VS2017、mysql server(>=8.0)  
+Copy dll files in openssl/cpr/mysql directory and Qt installation dir to work directory  
 Run mysql server in local port(4321 by default)  
 (When neccessary)Run proxy in local port(8000 by default)  
 Run DLSiteHelper in chrome And login into DLSite  

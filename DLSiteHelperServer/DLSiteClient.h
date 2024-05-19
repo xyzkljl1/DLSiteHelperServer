@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include "DLConfig.h"
 #include <QObject>
 #include <QByteArray>
@@ -14,26 +14,26 @@ class DLSiteClient:public QObject
 	Q_OBJECT
 public:
 	struct WorkInfo {
-		QString work_info_text;//infoÔ­ÎÄ
-		QStringList translations;//¶àÓïÑÔ°æ±¾
-		bool is_otm=false;//ÒÒÅ®Ïò
+		QString work_info_text;//infoåŸæ–‡
+		QStringList translations;//å¤šè¯­è¨€ç‰ˆæœ¬
+		bool is_otm=false;//ä¹™å¥³å‘
 	};
 	DLSiteClient();
 	~DLSiteClient();
-	//Ïß³Ì²»°²È«£¬Ö»ÄÜ´ÓÖ÷Ïß³Ìµ÷ÓÃ
+	//çº¿ç¨‹ä¸å®‰å…¨ï¼Œåªèƒ½ä»ä¸»çº¿ç¨‹è°ƒç”¨
 	void StartDownload(const QByteArray& cookies, const QByteArray& user_agent,const QStringList& works);
 	void StartRename(const QStringList& files);
 
-	//·µ»ØworkInfoºÍ¶àÓïÑÔ°æ±¾
+	//è¿”å›workInfoå’Œå¤šè¯­è¨€ç‰ˆæœ¬
 	WorkInfo FetchWorksInfo(const QString& id);
 	static Task TryDownloadWork(std::string id, cpr::Cookies cookie, cpr::UserAgent user_agent);
 protected:
-	//ÒÔ·ÀÍòÒ»Ö±½Ó´«Öµ
+	//ä»¥é˜²ä¸‡ä¸€ç›´æ¥ä¼ å€¼
 	void RenameThread(QStringList local_files);
 	void DownloadThread(QStringList works,cpr::Cookies cookie,cpr::UserAgent user_agent);
 	static bool RenameFile(const QString & file, const QString & id, const QString & work_name);
 
-	//·µ»ØresponseºÍÅÉÉúÎªJsonObjectµÄresponse
+	//è¿”å›responseå’Œæ´¾ç”Ÿä¸ºJsonObjectçš„response
 	static QPair<QString, QJsonObject> GetWorkInfoFromDLSiteAPI(cpr::Session& session, const QString& id);
 	static WorkType GetWorkTypeFromWeb(const std::string& page, const std::string&id);	
 	static QString unicodeToString(const QString& str);
@@ -42,6 +42,6 @@ protected:
 	void OnDownloadDone(std::vector<Task> task_list);
 	void OnDownloadAborted();
 
-	std::atomic<bool> running = false;//²»¹ÜÖ´ĞĞÄÄ¸öÈÎÎñ¶¼ÓÃÒ»¸örunning£¬ÒòÎªÓĞ¹²ÓÃµÄ³ÉÔ±
+	std::atomic<bool> running = false;//ä¸ç®¡æ‰§è¡Œå“ªä¸ªä»»åŠ¡éƒ½ç”¨ä¸€ä¸ªrunningï¼Œå› ä¸ºæœ‰å…±ç”¨çš„æˆå‘˜
 	BaseDownloader* downloader=nullptr;
 };

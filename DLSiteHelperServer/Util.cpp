@@ -1,4 +1,4 @@
-#include "Util.h"
+ï»¿#include "Util.h"
 #include <stdarg.h>
 #include "DLConfig.h"
 void LogError(const char* _Format, ...)
@@ -55,7 +55,7 @@ std::string Task::GetDownloadDir() const
 	case WorkType::PROGRAM:path += "Game/"; break;
 	default:path += "Default/";
 	}
-	//zipµÄ½âÑ¹Íê»¹ĞèÒª×ªÂë£¬ËùÒÔÒªºÍrarÇø·Ö¿ª
+	//zipçš„è§£å‹å®Œè¿˜éœ€è¦è½¬ç ï¼Œæ‰€ä»¥è¦å’ŒraråŒºåˆ†å¼€
 	if (download_ext.count("zip"))
 		path += "zip/";
 	else if (download_ext.count("rar"))

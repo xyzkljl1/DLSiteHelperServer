@@ -1,4 +1,4 @@
-#include "MyFakeWindow.h"
+﻿#include "MyFakeWindow.h"
 #include <Windows.h>
 #include <QMenu>
 #include <QAction>
@@ -11,7 +11,7 @@ MyFakeWindow::MyFakeWindow(QObject *parent)
 	icon->show();
 	connect(icon, &QSystemTrayIcon::activated, this, &MyFakeWindow::onIconClicked);
 	QMenu *menu=new QMenu();
-	QAction *exit_action=new QAction(QString::fromLocal8Bit("�˳�"),menu);
+	QAction *exit_action=new QAction(QString::fromLocal8Bit("退出"),menu);
 	menu->addAction(exit_action);
 	icon->setContextMenu(menu);
 	connect(exit_action, &QAction::triggered, this, &MyFakeWindow::signalClose);

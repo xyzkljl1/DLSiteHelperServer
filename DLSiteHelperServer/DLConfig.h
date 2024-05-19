@@ -1,25 +1,26 @@
-#pragma once
+ï»¿#pragma once
 #include <QStringList>
+//import Util;
 class DLConfig
 {
 public:
 	static bool IDM_Mode;
 	static bool ARIA2_Mode;
 
-	//´æ´¢Ä¿Â¼£¬Î»ÓÚlocal_dirsµÄÎÄ¼ş¼ĞÊÓ×÷ÒÑÏÂÔØ
-	//ÓĞĞò£¡µ±²»Í¬Ä¿Â¼´æÔÚÏà»¥¸²¸ÇµÄworkÊ±£¬ÓÅÏÈ±£Áô¿¿Ç°µÄÄ¿Â¼ÖĞµÄÎÄ¼ş
+	//å­˜å‚¨ç›®å½•ï¼Œä½äºlocal_dirsçš„æ–‡ä»¶å¤¹è§†ä½œå·²ä¸‹è½½
+	//æœ‰åºï¼å½“ä¸åŒç›®å½•å­˜åœ¨ç›¸äº’è¦†ç›–çš„workæ—¶ï¼Œä¼˜å…ˆä¿ç•™é å‰çš„ç›®å½•ä¸­çš„æ–‡ä»¶
 	static QStringList local_dirs;
-	//Î»ÓÚlocal_tmp_dirsµÄÎÄ¼ş½öÓÃÓÚÖØÃüÃû
+	//ä½äºlocal_tmp_dirsçš„æ–‡ä»¶ä»…ç”¨äºé‡å‘½å
 	static QStringList local_tmp_dirs;
-	//ÏÂÔØÄ¿Â¼,ĞÂÈÎÎñ»á±»ÏÂÔØµ½Õâ¸öÄ¿Â¼
+	//ä¸‹è½½ç›®å½•,æ–°ä»»åŠ¡ä¼šè¢«ä¸‹è½½åˆ°è¿™ä¸ªç›®å½•
 	static QString DOWNLOAD_DIR;
-	//¼àÌı¶Ë¿Ú£¬ĞèºÍDLSiteHelperÒ»ÖÂ
+	//ç›‘å¬ç«¯å£ï¼Œéœ€å’ŒDLSiteHelperä¸€è‡´
 	static int SERVER_PORT;
-	//Êı¾İ¿â¶Ë¿Ú
+	//æ•°æ®åº“ç«¯å£
 	static int DATABASE_PORT;
 	static std::string REQUEST_PROXY;
 	static std::string REQUEST_PROXY_TYPE;
-	//ARIA2¶Ë¿ÚºÍ´úÀí
+	//ARIA2ç«¯å£å’Œä»£ç†
 	static int ARIA2_PORT;
 	static QString ARIA2_PROXY;
 	static std::string ARIA2_SECRET;
