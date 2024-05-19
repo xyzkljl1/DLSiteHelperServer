@@ -12,7 +12,7 @@ const int SQL_LENGTH_LIMIT = 10000;
 
 DLSiteHelperServer::DLSiteHelperServer(QObject* parent):qserver(parent)
 {
-	//SyncLocalFileToDB();//启动时立刻更新本地文件
+	SyncLocalFileToDB();//启动时立刻更新本地文件
 	daily_timer.setInterval(86400*1000);
 	daily_timer.start();
 	//每天更新本地文件并获取workinfo
