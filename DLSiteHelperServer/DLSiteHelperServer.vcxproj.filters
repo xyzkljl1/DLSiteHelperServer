@@ -20,19 +20,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="DataBase.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="DLSiteClient.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="MyFakeWindow.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="DLConfig.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Aria2Downloader.cpp">
@@ -44,41 +32,44 @@
     <ClCompile Include="BaseDownloader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Util.cpp">
+    <ClCompile Include="Util.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Util2.ixx">
+    <ClCompile Include="DLConfig.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="main.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DataBase.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DLSiteClient.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DLSiteClientUtil.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="DataBase.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="resource1.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="DLConfig.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Util.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <QtMoc Include="DLSiteClient.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
     <QtMoc Include="MyFakeWindow.h">
       <Filter>Header Files</Filter>
     </QtMoc>
     <QtMoc Include="DLSiteHelperServer.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <QtMoc Include="Aria2Downloader.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
     <QtMoc Include="BaseDownloader.h">
       <Filter>Header Files</Filter>
     </QtMoc>
-    <QtMoc Include="Aria2Downloader.h">
+    <QtMoc Include="DLSiteClient.h">
       <Filter>Header Files</Filter>
     </QtMoc>
   </ItemGroup>

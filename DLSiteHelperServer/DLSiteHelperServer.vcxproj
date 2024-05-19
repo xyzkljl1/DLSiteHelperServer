@@ -137,24 +137,21 @@ echo D|xcopy "$(QtDllPath)/Qt6Networkd.dll" "$(TargetDir)" /y /C
   <ItemGroup>
     <ClCompile Include="Aria2Downloader.cpp" />
     <ClCompile Include="BaseDownloader.cpp" />
-    <ClCompile Include="DLConfig.cpp" />
-    <ClCompile Include="DataBase.cpp" />
-    <ClCompile Include="DLSiteHelperServer.cpp" />
+    <ClCompile Include="DataBase.ixx" />
+    <ClCompile Include="DLConfig.ixx" />
     <ClCompile Include="DLSiteClient.cpp" />
-    <ClCompile Include="main.cpp" />
+    <ClCompile Include="DLSiteClientUtil.ixx" />
+    <ClCompile Include="DLSiteHelperServer.cpp" />
+    <ClCompile Include="main.ixx" />
     <ClCompile Include="MyFakeWindow.cpp" />
-    <ClCompile Include="Util.cpp" />
-    <ClCompile Include="Util2.ixx" />
+    <ClCompile Include="Util.ixx" />
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="Aria2Downloader.h" />
-    <ClInclude Include="Util.h" />
     <QtMoc Include="BaseDownloader.h" />
-    <ClInclude Include="DLConfig.h" />
-    <ClInclude Include="DataBase.h" />
+    <QtMoc Include="DLSiteClient.h" />
     <ClInclude Include="resource1.h" />
     <QtMoc Include="MyFakeWindow.h" />
-    <QtMoc Include="DLSiteClient.h" />
     <QtMoc Include="DLSiteHelperServer.h" />
   </ItemGroup>
   <ItemGroup>

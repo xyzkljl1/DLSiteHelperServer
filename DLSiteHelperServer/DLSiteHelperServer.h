@@ -1,19 +1,18 @@
 ﻿#pragma once
+import DLConfig;
 #include "DLSiteClient.h"
-#include "DLConfig.h"
 #include <QStringList>
 #include <QTimer>
 #include <QRegExp>
 #include <QtHttpServer/QHttpServer>
-
+#include <set>
+using namespace Util;
 class DLSiteHelperServer:public QObject
 {
 	Q_OBJECT
 public:
 	DLSiteHelperServer(QObject* parent);
 	~DLSiteHelperServer();
-	static QRegExp GetWorkNameExpSep();
-	static QString GetIDFromDirName(QString dir);
 protected:
 	void HandleRequest(const QHttpServerRequest& request, QHttpServerResponder&& responseresponse);
 	void ReplyText(QHttpServerResponder&& responder, const QHttpServerResponder::StatusCode& status = QHttpServerResponder::StatusCode::Ok, const QString& message = "Success");

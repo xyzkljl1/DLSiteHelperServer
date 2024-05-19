@@ -1,5 +1,4 @@
 ﻿#pragma once
-#include "DLConfig.h"
 #include <QObject>
 #include <QByteArray>
 #include <QProcess>
@@ -7,7 +6,10 @@
 #include <set>
 #include <vector>
 #include "cpr/cpr.h"
-#include "Util.h"
+import Util;
+/*
+* 把继承自QObject的类改成ixx时，即使把定义放到.h文件里并声称moc文件，也无法正常生成metacall/signals等函数体，目前不知道如何解决
+*/
 class BaseDownloader;
 class DLSiteClient:public QObject
 {
@@ -26,7 +28,6 @@ public:
 
 	//返回workInfo和多语言版本
 	WorkInfo FetchWorksInfo(const QString& id);
-	static Task TryDownloadWork(std::string id, cpr::Cookies cookie, cpr::UserAgent user_agent);
 protected:
 	//以防万一直接传值
 	void RenameThread(QStringList local_files);

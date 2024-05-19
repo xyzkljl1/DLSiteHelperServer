@@ -1,10 +1,12 @@
 #include <QApplication>
 #include "MyFakeWindow.h"
 #include "DLSiteHelperServer.h"
-int main(int argc, char *argv[])
+import Util;
+using namespace Util;
+int main(int argc, char* argv[])
 {
 	QApplication a(argc, argv);
-	DLConfig::LoadFromFile(QApplication::applicationDirPath()+"/config.json");
+	LoadConfigFromFile(QApplication::applicationDirPath() + "/config.json");
 	DLSiteHelperServer server(&a);
 	std::set<std::string> args;
 	for (int i = 1; i < argc; ++i)

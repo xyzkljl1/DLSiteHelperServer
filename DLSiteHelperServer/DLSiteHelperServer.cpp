@@ -1,20 +1,14 @@
-﻿
-#include "DLSiteHelperServer.h"
-#include "DLSiteClient.h"
+﻿#include "DLSiteHelperServer.h"
+#include "mysql.h"
 #include <qregularexpression.h>
 #include <QDir>
 #include <QUrl>
 #include <string>
 #include <map>
 #include <set>
-#include "DataBase.h"
-
+using namespace Util;
+import DataBase;
 const int SQL_LENGTH_LIMIT = 10000;
-#define WORK_NAME_EXP "[RVBJ]{2}[0-9]{3,8}"
-//把字母和数字分别capture的表达式
-#define WORK_NAME_EXP_SEP "([RVBJ]{2})([0-9]{3,8})"
-#define SERIES_NAME_EXP "^S "
-
 
 DLSiteHelperServer::DLSiteHelperServer(QObject* parent):qserver(parent)
 {
@@ -32,32 +26,13 @@ DLSiteHelperServer::~DLSiteHelperServer()
 {
 }
 
-QRegExp DLSiteHelperServer::GetWorkNameExpSep()
-{
-	return QRegExp(WORK_NAME_EXP_SEP);
-}
-
-QString DLSiteHelperServer::GetIDFromDirName(QString dir)
-{
-	auto reg = GetWorkNameExpSep();
-	reg.indexIn(dir);
-	QString id = reg.cap(0);
-	//检查id格式，因为可能通过其它来源下载的文件格式不正确(没有补0)
-	QString num_postfix = reg.cap(2);
-	if (num_postfix.length() % 2 != 0)//奇数位数字的前面补0
-	{
-		num_postfix = "0" + num_postfix;
-		id = reg.cap(1) + num_postfix;
-	}
-	return id;
-}
 
 void DLSiteHelperServer::HandleRequest(const QHttpServerRequest & request, QHttpServerResponder&& response)
 {
 	QString request_target ="/?"+request.query().toString();
-	QRegExp reg_mark_eliminated("(/\?markEliminated)(" WORK_NAME_EXP ")");
-	QRegExp reg_mark_special_eliminated("(/\?markSpecialEliminated)(" WORK_NAME_EXP ")");
-	QRegExp reg_mark_overlap("(/\?markOverlap)&main=(" WORK_NAME_EXP ")&sub=(" WORK_NAME_EXP ")&duplex=([0-9])");
+	QRegExp reg_mark_eliminated(("(/\?markEliminated)(" +WORK_NAME_EXP+ ")").c_str());
+	QRegExp reg_mark_special_eliminated(("(/\?markSpecialEliminated)("+WORK_NAME_EXP+")").c_str());
+	QRegExp reg_mark_overlap(("(/\?markOverlap)&main=("+WORK_NAME_EXP+")&sub=("+WORK_NAME_EXP+")&duplex=([0-9])").c_str());
 	if (request_target.startsWith("/?QueryInvalidDLSite"))
 	{
 		auto ret = GetAllInvalidWorksString();
@@ -226,7 +201,7 @@ void DLSiteHelperServer::DailyTask()
 QString DLSiteHelperServer::UpdateBoughtItems(const QByteArray & data)
 {
 	DataBase database;
-	QRegExp reg(WORK_NAME_EXP);
+	QRegExp reg(WORK_NAME_EXP.c_str());
 	std::string	cmd;
 	for (const auto& byte : data.split(' '))
 	{
@@ -440,8 +415,8 @@ void DLSiteHelperServer::RenameLocal()
 QStringList DLSiteHelperServer::GetLocalFiles(const QStringList& root)
 {
 	QStringList ret;
-	QRegExp regex_is_work(WORK_NAME_EXP);
-	QRegExp regex_is_series(SERIES_NAME_EXP);
+	QRegExp regex_is_work(WORK_NAME_EXP.c_str());
+	QRegExp regex_is_series(SERIES_NAME_EXP.c_str());
 	for (auto& dir : root)
 		for (auto& info : QDir(dir).entryInfoList({ "*" }, QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name))
 			if (regex_is_work.indexIn(info.fileName()) > -1)

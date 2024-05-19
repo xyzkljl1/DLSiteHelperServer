@@ -1,6 +1,6 @@
-#pragma once
-#include "DLSiteClient.h"
+#include "cpr/cpr.h"
 #include <QObject>
+import Util;
 class BaseDownloader:public QObject
 {
 	Q_OBJECT
@@ -12,4 +12,3 @@ signals:
 protected:
 	bool CheckFiles(const std::vector<QString>& files);
 };
-

@@ -1,24 +1,64 @@
-﻿#include "DataBase.h"
-#include "DLConfig.h"
-#include "Util.h"
+﻿module;
+#include "mysql.h"
+export module DataBase;
+import DLConfig;
+import Util;
+import <string>;
+import <vector>;
+import <map>;
+using namespace Util;
+export class DataBase
+{
+public:
+	struct Work {
+		std::string id;
+		bool eliminated;
+		bool downloaded;
+		bool bought;
+		bool specialEliminated;
+		std::string info;
+	};
+	DataBase();
+	~DataBase();
+	//参数为1表示true，为0表示false，为-1表示any
+	//and=true表示所有条件都需要满足，否则表示只要满足一个
+	std::vector<DataBase::Work> SelectWorks(bool isAnd, int eliminated = -1, int downloaded = -1, int bought = -1, int specialEliminated = -1);
+	std::vector<std::string> SelectWorksId(bool isAnd, int eliminated = -1, int downloaded = -1, int bought = -1, int specialEliminated = -1);
+	int SelectWorksCount(bool isAnd, int eliminated = -1, int downloaded = -1, int bought = -1, int specialEliminated = -1);
+	void SetWorksInfo(const std::map<std::string, std::string>& id_info_map);
+	//更新work的info(默认该条已存在)
+	std::vector<std::string> SelectWorksIdWithoutInfo(int limit = 100);
+	std::vector<std::pair<std::string, std::string>> SelectOverlaps();
+	std::string GetSQLMarkOverlap(const std::string& main, const std::string& sub, bool both);
+	std::string GetSQLUpdateWork(const std::string& id, int eliminated = -1, int downloaded = -1, int bought = -1, int specialEliminated = -1);
+
+	//发送之后将cmd清空,抛弃结果
+	void SendQuery(std::string& cmd);
+	MYSQL my_sql;
+private:
+	std::string GetWhereClause(bool isAnd, int eliminated, int downloaded, int bought, int specialEliminated);
+
+};
+
+
 DataBase::DataBase()
 {
 	mysql_init(&my_sql);
-	mysql_real_connect(&my_sql, "127.0.0.1","root", "pixivAss",
-		"dlsitehelper",DLConfig::DATABASE_PORT,NULL, CLIENT_MULTI_STATEMENTS);
+	mysql_real_connect(&my_sql, "127.0.0.1", "root", "pixivAss",
+		"dlsitehelper", DLConfig::DATABASE_PORT, NULL, CLIENT_MULTI_STATEMENTS);
 }
 
 DataBase::~DataBase()
 {
 	mysql_close(&my_sql);
 }
-std::string DataBase::GetWhereClause(bool isAnd,int eliminated, int downloaded, int bought, int specialEliminated) {
+std::string DataBase::GetWhereClause(bool isAnd, int eliminated, int downloaded, int bought, int specialEliminated) {
 	std::string where_clause = "";
 	std::string con_str = isAnd ? " and " : " or ";
 	if (eliminated >= 0)
 		where_clause += "eliminated=" + std::to_string(eliminated);
 	if (downloaded >= 0)
-		where_clause += std::string(where_clause==""?"": con_str) + "downloaded = " + std::to_string(downloaded);
+		where_clause += std::string(where_clause == "" ? "" : con_str) + "downloaded = " + std::to_string(downloaded);
 	if (bought >= 0)
 		where_clause += std::string(where_clause == "" ? "" : con_str) + "bought = " + std::to_string(bought);
 	if (specialEliminated >= 0)
@@ -28,11 +68,11 @@ std::string DataBase::GetWhereClause(bool isAnd,int eliminated, int downloaded, 
 	return where_clause;
 }
 
-std::vector<DataBase::Work> DataBase::SelectWorks(bool isAnd,int eliminated, int downloaded, int bought, int specialEliminated)
+std::vector<DataBase::Work> DataBase::SelectWorks(bool isAnd, int eliminated, int downloaded, int bought, int specialEliminated)
 {
 	std::vector<DataBase::Work> ret;
-	std::string sql = "select id,eliminated,downloaded,bought,specialEliminated,info from works" 
-				+ GetWhereClause(isAnd, eliminated, downloaded, bought, specialEliminated) + ";";
+	std::string sql = "select id,eliminated,downloaded,bought,specialEliminated,info from works"
+		+ GetWhereClause(isAnd, eliminated, downloaded, bought, specialEliminated) + ";";
 	mysql_query(&my_sql, sql.c_str());
 	auto result = mysql_store_result(&my_sql);
 	if (mysql_errno(&my_sql))
@@ -55,7 +95,7 @@ std::vector<DataBase::Work> DataBase::SelectWorks(bool isAnd,int eliminated, int
 std::vector<std::string> DataBase::SelectWorksId(bool isAnd, int eliminated, int downloaded, int bought, int specialEliminated)
 {
 	std::vector<std::string> ret;
-	std::string sql = "select id from works" + GetWhereClause(isAnd,eliminated, downloaded, bought, specialEliminated) + ";";
+	std::string sql = "select id from works" + GetWhereClause(isAnd, eliminated, downloaded, bought, specialEliminated) + ";";
 	mysql_query(&my_sql, sql.c_str());
 	auto result = mysql_store_result(&my_sql);
 	if (mysql_errno(&my_sql))
@@ -69,7 +109,7 @@ std::vector<std::string> DataBase::SelectWorksId(bool isAnd, int eliminated, int
 
 int DataBase::SelectWorksCount(bool isAnd, int eliminated, int downloaded, int bought, int specialEliminated)
 {
-	std::string sql = "select count(*) from works"+ GetWhereClause(isAnd, eliminated, downloaded,bought,specialEliminated)+";";
+	std::string sql = "select count(*) from works" + GetWhereClause(isAnd, eliminated, downloaded, bought, specialEliminated) + ";";
 	mysql_query(&my_sql, sql.c_str());
 	auto result = mysql_store_result(&my_sql);
 	if (mysql_errno(&my_sql))
@@ -85,7 +125,7 @@ int DataBase::SelectWorksCount(bool isAnd, int eliminated, int downloaded, int b
 std::vector<std::string> DataBase::SelectWorksIdWithoutInfo(int limit)
 {
 	std::vector<std::string> ret;
-	std::string sql = "select id from works where info is null limit "+std::to_string(limit)+";";
+	std::string sql = "select id from works where info is null limit " + std::to_string(limit) + ";";
 	mysql_query(&my_sql, sql.c_str());
 	auto result = mysql_store_result(&my_sql);
 	if (mysql_errno(&my_sql))
@@ -106,7 +146,7 @@ std::vector<std::pair<std::string, std::string>> DataBase::SelectOverlaps()
 		LogError("%s\n", mysql_error(&my_sql));
 	MYSQL_ROW row;
 	while (row = mysql_fetch_row(result))
-		ret.push_back({row[0],row[1]});
+		ret.push_back({ row[0],row[1] });
 	mysql_free_result(result);
 	return ret;
 }
@@ -118,7 +158,7 @@ std::string DataBase::GetSQLMarkOverlap(const std::string& main, const std::stri
 		"INSERT IGNORE INTO works(id) VALUES(\"" + sub + "\");"
 		"INSERT IGNORE INTO overlap VALUES(\"" + main + "\",\"" + sub + "\");";
 	if (both)
-		cmd+="INSERT IGNORE INTO overlap VALUES(\"" + sub + "\",\"" + main + "\");";
+		cmd += "INSERT IGNORE INTO overlap VALUES(\"" + sub + "\",\"" + main + "\");";
 	return cmd;
 }
 
@@ -136,7 +176,7 @@ std::string DataBase::GetSQLUpdateWork(const std::string& id, int eliminated, in
 
 	if (set_clause == "")
 		return "";
-	return "update works set " + set_clause + " where id=\""+id+"\";";
+	return "update works set " + set_clause + " where id=\"" + id + "\";";
 }
 
 void DataBase::SetWorksInfo(const std::map<std::string, std::string>& id_info_map)

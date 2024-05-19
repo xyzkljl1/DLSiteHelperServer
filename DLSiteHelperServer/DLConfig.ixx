@@ -1,7 +1,11 @@
-﻿#pragma once
+﻿module;
 #include <QStringList>
-//import Util;
-class DLConfig
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
+export module DLConfig;
+export class DLConfig
 {
 public:
 	static bool IDM_Mode;
@@ -24,6 +28,16 @@ public:
 	static int ARIA2_PORT;
 	static QString ARIA2_PROXY;
 	static std::string ARIA2_SECRET;
-	static bool LoadFromFile(QString file_name);
 };
 
+QStringList DLConfig::local_dirs{ "/Archive/" };
+QStringList DLConfig::local_tmp_dirs{ "/Tmp/" };
+std::string DLConfig::REQUEST_PROXY = "127.0.0.1:8000";
+std::string DLConfig::REQUEST_PROXY_TYPE = "https";
+QString DLConfig::DOWNLOAD_DIR = "/Download/";
+QString DLConfig::ARIA2_PROXY = "127.0.0.1:8000";
+std::string DLConfig::ARIA2_SECRET = "";
+int DLConfig::SERVER_PORT = 4567;
+int DLConfig::DATABASE_PORT = 4321;
+int DLConfig::ARIA2_PORT = 4319;
+bool DLConfig::ARIA2_Mode = true;

@@ -6,8 +6,10 @@
 #include <QTimer>
 #include <QDir>
 #include <QCoreApplication>
+#include <QProcess>
 #include <QJsonDocument>
 #include <QJsonObject>
+import DLSiteClientUtil;
 Aria2Downloader::Aria2Downloader() {
 	auto timer = new QTimer(this);
 	timer->setSingleShot(false);
@@ -213,7 +215,7 @@ bool Aria2Downloader::CheckTaskStatus(bool init)
 		if (update_index.empty())
 			continue;
 		if (!init)//如果不是第一次创建任务，失效的任务可能是由于cookie过期，需要重新获取
-			task.cookies = DLSiteClient::TryDownloadWork(task.id, main_cookie, user_agent).cookies;
+			task.cookies = DLSiteClientUtil::MakeDownloadTask(task.id, main_cookie, user_agent).cookies;
 		//更新子任务
 		std::string path = task.GetDownloadDir();
 		if (!QDir(QString::fromLocal8Bit(path.c_str())).exists())

@@ -1,5 +1,7 @@
-﻿#pragma once
-#include "BaseDownloader.h"
+﻿#include "BaseDownloader.h"
+import Util;
+import DLConfig;
+using namespace Util;
 class QProcess;
 //线程不安全
 class Aria2Downloader:public BaseDownloader
