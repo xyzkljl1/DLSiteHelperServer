@@ -9,7 +9,9 @@
 #include <QProcess>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <ranges>
 import DLSiteClientUtil;
+using namespace std;
 Aria2Downloader::Aria2Downloader() {
 	auto timer = new QTimer(this);
 	timer->setSingleShot(false);
@@ -29,9 +31,11 @@ bool Aria2Downloader::StartDownload(const std::vector<Task>& _tasks, const cpr::
 	running = true;
 	main_cookie = _cookie;
 	user_agent = _user_agent;
+
 	task_list.clear();
 	for (auto& _task : _tasks)
 		task_list.push_back(_task);
+
 	//初始化任务
 	if (CheckTaskStatus(true)&&!task_list.empty())
 	{
@@ -160,14 +164,9 @@ bool Aria2Downloader::CheckTaskStatus(bool init)
 	int complete_ct = 0;
 	int total_ct = 0;
 	int update_success_ct = 0;
-	for (auto& task : task_list)
+	for (auto& task : task_list | views::filter([](auto&task) { return 
+		task.ready and task.type != WorkType::CANTDOWNLOAD and not task.urls.empty();}))
 	{
-		if (task.type == WorkType::CANTDOWNLOAD)
-			continue;
-		if (!task.ready)
-			continue;
-		if (task.urls.empty())
-			continue;
 		//找到需要更新的子任务
 		total_ct += task.urls.size();
 		std::vector<int> update_index;//需要更新的子任务的索引

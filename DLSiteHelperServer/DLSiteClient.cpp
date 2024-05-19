@@ -8,6 +8,7 @@
 #include "cpr/cpr.h"
 #include <regex>
 #include <future>
+#include <ranges>
 #include <QDir>
 #include <QFile>
 #include <QCoreApplication>
@@ -361,9 +362,9 @@ DLSiteClient::WorkInfo DLSiteClient::FetchWorksInfo(const QString& work_id)
 	}
 	//找到所有dl_count_items包含的子作品
 	ret.translations = parent_works;
-	for (const auto& subwork_id : parent_works)
+																	//[&]表示未显示声明捕获类型的变量都以引用捕获,[&session]表示显示声明session以引用捕获,此处session不应该拷贝
+	for (const auto& work_info : parent_works | std::views::transform([&](auto& subwork_id) {return GetWorkInfoFromDLSiteAPI(session, subwork_id).second; }))
 	{
-		auto work_info = GetWorkInfoFromDLSiteAPI(session, subwork_id).second;
 		//if (work_info.isEmpty())
 			//return ret;
 		if (!work_info.contains("translation_info"))
