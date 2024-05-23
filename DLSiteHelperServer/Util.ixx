@@ -6,8 +6,8 @@
 #include <QJsonArray>
 #include <QRegExp>
 #include "cpr/cpr.h"
-import DLConfig;
 export module Util;
+import DLConfig;
 /*
 * 使用import std之后，该模块和import该模块的文件(如果调用了对应函数)都不能直接或间接#include某些std库(包括string和QString等)，否则会出现重定义错误无法编译
 * 似乎是因为VS2022对C++20的支持不完全:https://stackoverflow.com/questions/77220989/is-import-std-a-realistic-goal-for-a-c-project-with-transitive-standard-lib

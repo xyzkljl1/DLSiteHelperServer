@@ -3,13 +3,22 @@
 #include <qregularexpression.h>
 #include <QDir>
 #include <QUrl>
+#include <ranges>
 #include <string>
 #include <map>
 #include <set>
 using namespace Util;
 import DataBase;
 const int SQL_LENGTH_LIMIT = 10000;
-
+void IDontKnowWhy()
+{
+	//WHy?????
+	//如果删掉这段代码，在GetAllInvalidWorksString末尾调用的类似代码就会无法编译,似乎是因为编译器无法确定唯一的|运算符
+	//同样的代码在一个空文件中可以正常编译，在该文件考前位置可以正常编译
+	//在该文件靠后的位置，如果之前没出现过同样代码，就会编译失败，如果之前出现过则可以编译
+	std::set<std::string> invalid_work;
+	auto x=invalid_work | std::views::join_with(' ');
+}
 DLSiteHelperServer::DLSiteHelperServer(QObject* parent):qserver(parent)
 {
 	SyncLocalFileToDB();//启动时立刻更新本地文件
@@ -143,20 +152,34 @@ void DLSiteHelperServer::ReplyText(QHttpServerResponder&& responder,const QHttpS
 
 QString DLSiteHelperServer::GetAllOverlapWorksString()
 {
-	auto overlap_work= GetAllOverlapWorks();
+	auto overlap_work= GetAllOverlapWorks();//std::map<std::string, std::set<std::string>>
 	std::string ret="{";
+	//用ranges之后似乎变得更复杂了
+	ret+=overlap_work	| std::views::filter([](auto& pair) {return !pair.second.empty(); })
+						| std::views::transform([](auto& pair) {
+								return Format("\"%s\":[%s]",pair.first.c_str(),
+											(pair.second | std::views::transform([](auto& str) {return  Format("\"%s\"",str.c_str()); })
+												| std::views::join_with(',')
+												| std::ranges::to<std::string>()).c_str()
+											);
+							})
+						| std::views::join_with(',')
+						| std::ranges::to<std::string>();
+	/*
 	for (auto& pair : overlap_work)
-		if(!pair.second.empty())
+		if (!pair.second.empty())
 		{
 			ret += "\"" + pair.first + "\":[";
 			for (auto& sub : pair.second)
-				ret += "\""+sub+"\",";
+				ret += "\"" + sub + "\",";
 			ret.pop_back();//去掉最后一个逗号
 			ret += "],";
 		}
 	if(ret.size()>2)//去掉最后一个逗号
 		ret.pop_back();
+	*/
 	ret += "}";
+	printf("%s", ret.c_str());
 	return s2q(ret);
 }
 
@@ -245,10 +268,11 @@ QString DLSiteHelperServer::GetAllInvalidWorksString()
 			if (!invalid_work.count(id))
 				invalid_work.insert(id);
 	}
-	std::string ret;
-	for(const auto& id:invalid_work)
-		ret += (ret.empty() ? "" : " ") + id;
-	return s2q(ret);
+	//std::string ret;
+	//for(const auto& id:invalid_work)
+	//	ret += (ret.empty() ? "" : " ") + id;
+	//return s2q(ret);
+	return s2q(invalid_work | std::views::join_with(' ') |std::ranges::to<std::string>());
 }
 
 void DLSiteHelperServer::SyncLocalFileToDB()
