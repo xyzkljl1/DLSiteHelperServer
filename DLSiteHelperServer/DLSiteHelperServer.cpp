@@ -6,6 +6,11 @@
 #include <ranges>
 #include <string>
 #include <map>
+#include <regex>
+#include <filesystem>
+#include <locale>
+#include <print>
+#include <codecvt>
 #include <set>
 using namespace Util;
 import DataBase;
@@ -281,7 +286,7 @@ void DLSiteHelperServer::SyncLocalFileToDB()
 	DataBase database;
 	std::set<std::string> overlapped_works;//被已下载/已排除作品覆盖的作品
 	std::set<std::string> downloaded_works;//已下载作品
-	std::map<std::string, QString> currentdir_downloaded_works;//当前目录的已下载作品，id-dir
+	std::map<std::string, std::filesystem::path> currentdir_downloaded_works;//当前目录的已下载作品，id-dir
 
 	auto overlaps=GetAllOverlapWorks();
 	{//获取eliminated及其覆盖的作品
@@ -294,12 +299,13 @@ void DLSiteHelperServer::SyncLocalFileToDB()
 						overlapped_works.insert(j);
 	}
 	//依序遍历local_dirs,查找已下载的作品去重，如果下载了多个互相覆盖的作品，保留靠前的目录中的文件
+	std::error_code errorcode;
 	for (auto& root_dir : DLConfig::local_dirs)
 	{
 		currentdir_downloaded_works.clear();
-		for (auto& dir : GetLocalFiles(QStringList{ root_dir }))
+		for (auto& dir : GetLocalFiles(std::vector<std::string>{ root_dir }))
 		{
-			std::string id = q2s(GetIDFromDirName(QFileInfo(dir).fileName()));
+			std::string id = GetIDFromPath(dir);
 			if (id.empty())
 				continue;
 			if (downloaded_works.count(id) || overlapped_works.count(id))
@@ -308,10 +314,12 @@ void DLSiteHelperServer::SyncLocalFileToDB()
 				//按目录优先级遍历，如果作品覆盖了同目录/低优先级目录的作品则删除被覆盖的作品
 				//不能因低优先级目录的作品的删掉高优先级目录的作品，防止一个收藏作品因为新下载了一个合集就被从收藏文件夹里移除
 				//同目录覆盖作品会因为遍历顺序漏掉一部分，例如A单向覆盖B，先遍历B再遍历A，则B不会在此处被删除，在下方补充判断currentdir_downloaded_works
-				if (!QDir(dir).removeRecursively())
-					Log("Can't Remove %s\n", q2s(dir).c_str());
+				//传入error code时，返回-1表示失败；不传入时失败抛出异常
+				//目录不存在也算成功
+				if (std::filesystem::remove_all(dir, errorcode)<0)
+					LogEx("Can't Remove {}\n", w2s(dir.wstring()));
 				else
-					Log("Remove Eliminated: %s\n", q2s(dir).c_str());
+					LogEx("Remove Eliminated: {}\n", w2s(dir.wstring()));
 			}
 			else
 			{
@@ -329,10 +337,10 @@ void DLSiteHelperServer::SyncLocalFileToDB()
 						//如果覆盖了同目录下其它作品，则把之前的作品删除(该作品进入了该if说明两者不是双向覆盖，而是该作品单向覆盖之前的作品)
 						if (currentdir_downloaded_works.count(sub_id))
 						{
-							if (!QDir(currentdir_downloaded_works[sub_id]).removeRecursively())
-								Log("Can't Remove %s\n", q2s(currentdir_downloaded_works[sub_id]).c_str());
+							if (std::filesystem::remove_all(currentdir_downloaded_works[sub_id], errorcode) < 0)
+								LogEx("Can't Remove {}\n", w2s(currentdir_downloaded_works[sub_id].wstring()));
 							else
-								Log("Remove Eliminated: %s\n", q2s(currentdir_downloaded_works[sub_id]).c_str());
+								LogEx("Remove Eliminated: {}\n", w2s(currentdir_downloaded_works[sub_id].wstring()));
 							currentdir_downloaded_works.erase(sub_id);
 							downloaded_works.erase(sub_id);
 						}
@@ -431,25 +439,36 @@ void DLSiteHelperServer::DownloadAll(const QByteArray&cookie, const QByteArray& 
 
 void DLSiteHelperServer::RenameLocal()
 {
-	client.StartRename(GetLocalFiles(DLConfig::local_dirs + DLConfig::local_tmp_dirs));
+	client.StartRename(GetLocalFiles(ConcatVector(DLConfig::local_dirs, DLConfig::local_tmp_dirs)));
 }
 
 //获得指定根目录下所有work的路径
 //遍历根目录下一级以及根目录下[以SERIES_NAME_EXP开头的目录]的下一级
-QStringList DLSiteHelperServer::GetLocalFiles(const QStringList& root)
+std::vector<std::filesystem::path> DLSiteHelperServer::GetLocalFiles(const std::vector<std::string>& root)
 {
-	QStringList ret;
-	QRegExp regex_is_work(WORK_NAME_EXP.c_str());
-	QRegExp regex_is_series(SERIES_NAME_EXP.c_str());
+	std::vector<std::filesystem::path> ret;
+	std::regex regex_is_work(WORK_NAME_EXP);
+	std::regex regex_is_series(SERIES_NAME_EXP);
+	std::smatch match_result;
 	for (auto& dir : root)
-		for (auto& info : QDir(dir).entryInfoList({ "*" }, QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name))
-			if (regex_is_work.indexIn(info.fileName()) > -1)
-				ret.push_back(info.filePath());
-			else if (regex_is_series.indexIn(info.fileName()) > -1)
-			{
-				for (auto& sub_info : QDir(info.filePath()).entryInfoList({ "*" }, QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name))
-					if (regex_is_work.indexIn(sub_info.fileName()) > -1)
-						ret.push_back(sub_info.filePath());
-			}
+		if(std::filesystem::exists(dir))
+			for (auto& info : std::filesystem::directory_iterator(dir))
+				if(info.is_directory())
+				{
+					auto path = info.path();
+					//需要获得wstring再转string,see w2s_u2c
+					std::string filename= w2s(path.filename().wstring());
+					if (std::regex_search(filename, match_result, regex_is_work))
+						ret.push_back(path);
+					else if (std::regex_search(filename, match_result, regex_is_series))
+					{
+						for (auto& sub_info : std::filesystem::directory_iterator(path))
+						{
+							std::string sub_filename = w2s(sub_info.path().filename().wstring());
+							if (std::regex_search(sub_filename, match_result, regex_is_work))
+								ret.push_back(sub_info.path());
+						}
+					}
+				}
 	return ret;
 }

@@ -17,17 +17,17 @@ protected:
 	void HandleRequest(const QHttpServerRequest& request, QHttpServerResponder&& responseresponse);
 	void ReplyText(QHttpServerResponder&& responder, const QHttpServerResponder::StatusCode& status = QHttpServerResponder::StatusCode::Ok, const QString& message = "Success");
 	
-	QString GetAllInvalidWorksString();
-	QString GetAllOverlapWorksString();
+	[[nodiscard]] QString GetAllInvalidWorksString();
+	[[nodiscard]] QString GetAllOverlapWorksString();
 	QString UpdateBoughtItems(const QByteArray& data);
 
-	std::map<std::string, std::set<std::string>> GetAllOverlapWorks();
+	[[nodiscard]] std::map<std::string, std::set<std::string>> GetAllOverlapWorks();
 	void DailyTask();
 	void SyncLocalFileToDB();
 	void FetchWorkInfo(int limit=100);//从DLSite获取workinfo并存入数据库
 	void DownloadAll(const QByteArray& cookie, const QByteArray& user_agent);
 	void RenameLocal();
-	QStringList GetLocalFiles(const QStringList& root);
+	[[nodiscard]] std::vector<std::filesystem::path> GetLocalFiles(const std::vector<std::string>& root);
 protected:
 	constexpr static int SQL_LENGTH_LIMIT= 10000;
 	DLSiteClient client;

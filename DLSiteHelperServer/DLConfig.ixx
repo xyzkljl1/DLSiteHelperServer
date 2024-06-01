@@ -13,9 +13,9 @@ public:
 
 	//存储目录，位于local_dirs的文件夹视作已下载
 	//有序！当不同目录存在相互覆盖的work时，优先保留靠前的目录中的文件
-	static QStringList local_dirs;
+	static std::vector<std::string> local_dirs;
 	//位于local_tmp_dirs的文件仅用于重命名
-	static QStringList local_tmp_dirs;
+	static std::vector<std::string> local_tmp_dirs;
 	//下载目录,新任务会被下载到这个目录
 	static QString DOWNLOAD_DIR;
 	//监听端口，需和DLSiteHelper一致
@@ -30,8 +30,8 @@ public:
 	static std::string ARIA2_SECRET;
 };
 
-QStringList DLConfig::local_dirs{ "/Archive/" };
-QStringList DLConfig::local_tmp_dirs{ "/Tmp/" };
+std::vector<std::string> DLConfig::local_dirs{ "/Archive/" };
+std::vector<std::string> DLConfig::local_tmp_dirs{ "/Tmp/" };
 std::string DLConfig::REQUEST_PROXY = "127.0.0.1:8000";
 std::string DLConfig::REQUEST_PROXY_TYPE = "https";
 QString DLConfig::DOWNLOAD_DIR = "/Download/";

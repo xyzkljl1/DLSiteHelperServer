@@ -5,6 +5,10 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QRegExp>
+#include <codecvt>
+#include <regex>
+#include <locale>
+#include <format>
 #include "cpr/cpr.h"
 export module Util;
 import DLConfig;
@@ -43,9 +47,9 @@ export struct Task {
 	std::vector<std::string> file_names;//下载的文件的文件名
 	QString work_name;//作品名
 	bool ready = false;
-	std::string GetDownloadDir() const;
-	std::string GetDownloadPath(int i) const;
-	std::string GetExtractPath() const;
+	[[nodiscard]] std::string GetDownloadDir() const;
+	[[nodiscard]] std::string GetDownloadPath(int i) const;
+	[[nodiscard]] std::string GetExtractPath() const;
 };
 std::string Task::GetDownloadDir() const
 {
@@ -113,6 +117,12 @@ namespace Util {
 		va_end(args);
 		fprintf(stdout, buff);
 	}
+	export template<typename... Args>
+	inline void LogEx(const std::format_string<Args...> fmt, Args&&... args)
+	{
+		fprintf(stdout, std::vformat(fmt.get(), std::make_format_args(args...)).c_str());
+	}
+
 	export std::string Format(const char* Format, ...)
 	{
 		char buff[1024 * 24] = { 0 };
@@ -133,6 +143,39 @@ namespace Util {
 	{
 		return str.toStdString();
 	}
+	export std::string w2s(const std::wstring&str)
+	{
+		//注意这会丢失信息，一些字符如♪(utf-16 0x266a)会变成?,因此w2s只能用于打印，不能用于操作文件
+		//遇到特定字符时，std::filesystem::path::string()内部会因为wstring转string失败抛异常，例如：♪(utf-16 0x266a)
+		//需要从path获得wstring再自己转成string
+
+		//WideCharToMultiByte结果和wcstombs一样
+
+		// wstring_convert也会抛异常，把utf16的wstring转成current code page的string，本地编码应该是.936即gb2312
+		//std::wstring_convert converter(new std::codecvt_byname<wchar_t, char, std::mbstate_t>(
+		//												std::vformat(".{}", std::make_format_args(GetACP())
+		//												)));
+		// return converter.to_bytes(str);
+
+		//必须setlocale,默认locale为"C",在main中调用
+		//std::setlocale(LC_ALL, "");
+		char s[2048];
+		//需要*sizeof(wchar_t),size和length返回的都是字符数
+		std::wcstombs(s, str.c_str(), str.size()*sizeof(wchar_t));
+		return s;
+	}
+	export std::wstring s2w(const std::string& str)
+	{
+		std::vector<wchar_t> s(str.size());
+		size_t real_size = std::mbstowcs(s.data(), str.c_str(), str.size());
+		return std::wstring(s.data(), s.data() + real_size);
+	}
+	export std::wstring q2w(const QString& str)
+	{
+		//似乎直接转就可以？
+		return str.toStdWString();
+	}
+
 	export QString s2q(const std::string& str)
 	{
 		return QString::fromLocal8Bit(str.c_str());
@@ -142,18 +185,27 @@ namespace Util {
 	{
 		return QRegExp(WORK_NAME_EXP_SEP.c_str());
 	}
-
-	export QString GetIDFromDirName(QString dir)
+	export template<typename T>
+	T ConcatVector(T&& l, T&& r)
 	{
-		auto reg = GetWorkNameExpSep();
-		reg.indexIn(dir);
-		QString id = reg.cap(0);
+		T ret = l;
+		ret.insert(ret.end(), r.begin(), r.end());
+		return ret;
+	}
+	export std::string GetIDFromPath(std::filesystem::path dir)
+	{
+		//需要获得wstring再转string,see w2s
+		std::string filename =  w2s(dir.filename().wstring());
+		std::regex reg(WORK_NAME_EXP_SEP);
+		std::smatch match_result;
+		std::regex_search(filename,match_result,reg);
+		std::string id = match_result[0];
 		//检查id格式，因为可能通过其它来源下载的文件格式不正确(没有补0)
-		QString num_postfix = reg.cap(2);
+		std::string num_postfix = match_result[2];
 		if (num_postfix.length() % 2 != 0)//奇数位数字的前面补0
 		{
 			num_postfix = "0" + num_postfix;
-			id = reg.cap(1) + num_postfix;
+			id = std::string(match_result[1]) + num_postfix;
 		}
 		return id;
 	}
@@ -183,14 +235,14 @@ namespace Util {
 		{
 			DLConfig::local_dirs.clear();
 			for (auto dir : root.value(key).toArray())
-				DLConfig::local_dirs.append(dir.toString());
+				DLConfig::local_dirs.emplace_back(q2s(dir.toString()));
 		}
 		key = "local_tmp_dirs";
 		if (root.contains(key) && root.value(key).isArray())
 		{
 			DLConfig::local_tmp_dirs.clear();
 			for (auto dir : root.value(key).toArray())
-				DLConfig::local_tmp_dirs.append(dir.toString());
+				DLConfig::local_tmp_dirs.emplace_back(q2s(dir.toString()));
 		}
 		key = "DOWNLOAD_DIR";
 		if (root.contains(key) && root.value(key).isString())

@@ -96,7 +96,7 @@ void DLSiteClient::OnDownloadDone(std::vector<Task> task_list)
 	if (!running)
 		return;
 	Log("Download Done,Begin extract\n");
-	QStringList extract_dirs;
+	std::vector<std::filesystem::path> extract_dirs;
 	for (auto& task : task_list)//暂时只见到过单个zip和分段rar两种格式
 	{
 		if (task.download_ext.count("zip"))
@@ -129,7 +129,7 @@ void DLSiteClient::OnDownloadDone(std::vector<Task> task_list)
 		}
 		for (int i = 0; i < task.urls.size(); ++i)
 			QFile(s2q(task.GetDownloadPath(i))).remove();
-		extract_dirs += dir;
+		extract_dirs.emplace_back(q2w(dir));
 	}
 	Log("%d/%d works Extracted\n", (int)extract_dirs.size(), (int)task_list.size());
 	running = false;
@@ -148,27 +148,27 @@ void DLSiteClient::OnDownloadAborted()
 	running = false;
 }
 
-bool DLSiteClient::RenameFile(const QString& file, const QString& id, const QString& work_name)
+bool DLSiteClient::RenameFile(const std::filesystem::path& file, const std::string& id, const std::wstring& _work_name)
 {
-	QString name = unicodeToString(work_name);
-	name.replace(QRegularExpression("[/\\\\?*<>:\"|.]"), "_");
-	int pos = file.lastIndexOf(QRegularExpression("[\\/]")) + 1;
-	QString old_name = QDir(file).dirName();
-	QString new_name = id + " " + name;
+	std::wstring work_name=std::regex_replace(work_name, std::wregex(L"[/\\\\?*<>:\"|.]"), L"_");
+	std::wstring old_name = file.filename().wstring();
+	std::wstring new_name = s2w(id) + L" " + work_name;
 	if (old_name == new_name)
 		return false;
-	QDir parent(file);
-	parent.cdUp();
-	while (parent.exists(new_name))
-		new_name = new_name + "_repeat";
+	auto parent = file.parent_path();
+	while (std::filesystem::exists(parent/new_name))
+		new_name = new_name + L"_repeat";
 	if (old_name == new_name)
 		return false;
-	if (parent.rename(old_name, new_name))
+	//有errorcode的版本不会抛出异常
+	std::error_code ec;
+	std::filesystem::rename(parent / old_name, parent / new_name,ec);
+	if(!ec)
 		return true;
-	LogError("Cant Rename %s -> %s", q2s(old_name).c_str(), q2s(new_name).c_str());
+	LogError("Cant Rename %ls -> %ls:%s", old_name.c_str(), new_name.c_str(),ec.message().c_str());
 	return false;
 }
-void DLSiteClient::RenameThread(QStringList local_files)
+void DLSiteClient::RenameThread(std::vector<std::filesystem::path> local_files)
 {
 	cpr::Session session;//不需要cookie
 	session.SetVerifySsl(cpr::VerifySsl{ false });
@@ -179,8 +179,8 @@ void DLSiteClient::RenameThread(QStringList local_files)
 	int ct = 0;
 	for (const auto& file : local_files)
 	{
-		QString id = GetIDFromDirName(file);
-		auto work_info = GetWorkInfoFromDLSiteAPI(session, id).second;
+		std::string id = GetIDFromPath(file);
+		auto work_info = GetWorkInfoFromDLSiteAPI(session, s2q(id)).second;
 		if (work_info.isEmpty())
 			continue;
 		if (!work_info.contains("work_name"))
@@ -188,7 +188,7 @@ void DLSiteClient::RenameThread(QStringList local_files)
 			LogError("Cant Find Name\n");
 			continue;
 		}
-		ct += RenameFile(file, id, work_info.value("work_name").toString());
+		ct += RenameFile(file, id, q2w(unicodeToString(work_info.value("work_name").toString())));
 	}
 	running = false;
 	Log("Rename Done\n");
@@ -387,21 +387,17 @@ DLSiteClient::WorkInfo DLSiteClient::FetchWorksInfo(const QString& work_id)
 	return ret;
 }
 
-void DLSiteClient::StartRename(const QStringList& _files)
+void DLSiteClient::StartRename(const std::vector<std::filesystem::path>& _paths)
 {
 	if (this->running)
 		return;
 	//因为都是在主线程运行，所以这里不需要用原子操作
 	running = true;
-	QStringList local_files;
-	for (const auto& file : _files)
-	{
-		QString id = GetIDFromDirName(file);
-		if (id.isEmpty())
-			continue;
-		if (QDir(file).dirName().size() < id.size() + 2)
-			local_files.push_back(file);
-	}
-	std::thread thread(&DLSiteClient::RenameThread, this, local_files);
+	//参数为input_range auto 时thread无法正确推导类型，因此还是用vector 
+	std::thread thread(&DLSiteClient::RenameThread, this, _paths | std::views::filter([](auto& path) {
+																		std::string id = GetIDFromPath(path);
+																		return id.size() > 0 && path.filename().wstring().size() < id.size() + 2;
+																		})
+	  															 | std::ranges::to<std::vector<std::filesystem::path>>());
 	thread.detach();
 }

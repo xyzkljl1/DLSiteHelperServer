@@ -5,6 +5,7 @@
 #include <QStringList>
 #include <set>
 #include <vector>
+#include <filesystem>
 #include "cpr/cpr.h"
 import Util;
 /*
@@ -24,19 +25,19 @@ public:
 	~DLSiteClient();
 	//线程不安全，只能从主线程调用
 	void StartDownload(const QByteArray& cookies, const QByteArray& user_agent,const QStringList& works);
-	void StartRename(const QStringList& files);
+	void StartRename(const std::vector<std::filesystem::path>& files);
 
 	//返回workInfo和多语言版本
-	WorkInfo FetchWorksInfo(const QString& id);
+	[[nodiscard]] WorkInfo FetchWorksInfo(const QString& id);
 protected:
 	//以防万一直接传值
-	void RenameThread(QStringList local_files);
+	void RenameThread(std::vector<std::filesystem::path> local_files);
 	void DownloadThread(QStringList works,cpr::Cookies cookie,cpr::UserAgent user_agent);
-	static bool RenameFile(const QString & file, const QString & id, const QString & work_name);
+	static bool RenameFile(const std::filesystem::path& file, const std::string & id, const std::wstring& work_name);
 
 	//返回response和派生为JsonObject的response
 	static QPair<QString, QJsonObject> GetWorkInfoFromDLSiteAPI(cpr::Session& session, const QString& id);
-	static QString unicodeToString(const QString& str);
+	[[nodiscard]] static QString unicodeToString(const QString& str);
 	bool Extract(const QString& file_name,const QString& dir);
 
 	void OnDownloadDone(std::vector<Task> task_list);

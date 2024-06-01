@@ -6,6 +6,8 @@
 import Util;
 int main(int argc, char* argv[])
 {
+	//为了wstring转string，see w2s_u2c
+	std::setlocale(LC_ALL, "");
 	QApplication a(argc, argv);
 	LoadConfigFromFile(QApplication::applicationDirPath() + "/config.json");
 	DLSiteHelperServer server(&a);
