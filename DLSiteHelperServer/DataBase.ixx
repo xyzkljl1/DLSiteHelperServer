@@ -217,10 +217,8 @@ void DataBase::SetWorksInfo(const std::map<std::string, std::string>& id_info_ma
 		std::string err = mysql_error(&my_sql);
 		return;
 	}
-	for (const auto& pair : id_info_map)
+	for (const auto& [id,info] : id_info_map)
 	{
-		std::string id = pair.first;
-		std::string info = pair.second;
 		MYSQL_BIND binds[2];
 		memset(binds, 0, sizeof(binds));//这个size正确吗？
 		binds[0].buffer_type = MYSQL_TYPE_STRING;

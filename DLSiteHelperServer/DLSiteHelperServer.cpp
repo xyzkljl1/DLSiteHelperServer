@@ -60,9 +60,9 @@ void DLSiteHelperServer::HandleRequest(const QHttpServerRequest & request, QHttp
 		//user-agent与cookie需要符合，user-agent通过请求的user-agent，cookie通过请求的data获得
 		//request.headers()["user-agent"]
 		QByteArray useragent;
-		for (auto& pair : request.headers())
-			if (pair.first.toLower() == "user-agent")
-				useragent = pair.second;
+		for (auto& [header,value] : request.headers())
+			if (header.toLower() == "user-agent")
+				useragent = value;
 		DownloadAll(request.body(), useragent);
 		ReplyText(std::move(response), QHttpServerResponder::StatusCode::Ok, "Started");
 		Log("std::move(response) Download Request\n");
@@ -188,13 +188,14 @@ std::map<std::string, std::set<std::string>> DLSiteHelperServer::GetAllOverlapWo
 	std::map<std::string, std::set<std::string>> overlap_work;
 	//获得手动标记的覆盖关系
 	std::map<std::string, std::set<std::string>> base_edges;
-	for (const auto& pair : database.SelectOverlaps())
-		base_edges[pair.first].insert(pair.second);
+	for (const auto& [left_work,right_work] : database.SelectOverlaps())
+		base_edges[left_work].insert(right_work);
 	//推导出其它覆盖关系
 	overlap_work = base_edges;
-	for (auto& pair : overlap_work)
+	//auto& [a,b]:map时，ab为[const KeyType&,ValueType&]，是对容器内值的引用
+	//auto [a,b]:map时，ab为[const KeyType&&,ValueType&&],是对拷贝出来的pair的值的右值引用
+	for (auto& [left_work,ret] : overlap_work)
 	{
-		auto& ret = pair.second;
 		//对于每个work，基于base_edges宽搜
 		std::set<std::string> starts = ret;
 		std::set<std::string> next_starts;
@@ -202,7 +203,7 @@ std::map<std::string, std::set<std::string>> DLSiteHelperServer::GetAllOverlapWo
 			for (auto& s : starts)
 				if (base_edges.count(s))
 					for (auto& t : base_edges[s])
-						if (t != pair.first && !ret.count(t))
+						if (t != left_work && !ret.count(t))
 						{
 							ret.insert(t);
 							next_starts.insert(t);

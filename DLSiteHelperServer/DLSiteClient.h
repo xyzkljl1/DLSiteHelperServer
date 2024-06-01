@@ -36,7 +36,6 @@ protected:
 
 	//返回response和派生为JsonObject的response
 	static QPair<QString, QJsonObject> GetWorkInfoFromDLSiteAPI(cpr::Session& session, const QString& id);
-	static WorkType GetWorkTypeFromWeb(const std::string& page, const std::string&id);	
 	static QString unicodeToString(const QString& str);
 	bool Extract(const QString& file_name,const QString& dir);
 

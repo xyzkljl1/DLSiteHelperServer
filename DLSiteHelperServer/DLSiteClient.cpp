@@ -223,8 +223,9 @@ void DLSiteClient::DownloadThread(QStringList works, cpr::Cookies cookie, cpr::U
 	QStringList tmp;
 	for (const auto& id : works)
 		futures[q2s(id)] = std::async(&DLSiteClientUtil::MakeDownloadTask, q2s(id), cookie, user_agent);
-	for (auto& pair : futures)//应该用whenall,但是并没有
-		task_list.push_back(pair.second.get());
+	for (auto& [_,future] : futures)//应该用whenall,但是并没有
+		task_list.push_back(future.get());
+
 	//有时会下载失败403，疑似是因为cookie失效，在chrome里手动尝试下载任意文件可解
 	//TODO: fix it
 	if (!downloader->StartDownload(task_list, cookie, user_agent))

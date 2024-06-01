@@ -121,8 +121,8 @@ namespace DLSiteClientUtil {
 						download_cookie[q2s(tmp[0])] = q2s(tmp[1]);
 					}
 				}
-				for (auto& pair : download_cookie)
-					current_cookie += (pair.first + "=" + pair.second + "; ").c_str();
+				for (auto& [key,value] : download_cookie)
+					current_cookie += (key + "=" + value + "; ").c_str();
 			}
 			if (res.status_code == 302)
 			{

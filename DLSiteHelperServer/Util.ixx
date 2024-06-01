@@ -87,8 +87,13 @@ std::string Task::GetExtractPath() const
 namespace Util {
 	//把字母和数字分别capture的表达式
 	export const std::string WORK_NAME_EXP_SEP = "([RVBJ]{2})([0-9]{3,8})";
+#ifdef _DEBUG
+	export const std::string SERIES_NAME_EXP = "^S ";
+#else
 	//string具有短字符串优化(SSO)，长度在sso长度(16)以内的可以为constexpr
+	//但是debug时似乎没有SSO就不行了
 	export constexpr std::string SERIES_NAME_EXP = "^S ";
+#endif
 	export const std::string WORK_NAME_EXP = "[RVBJ]{2}[0-9]{3,8}";
 	export void LogError(const char* _Format, ...)
 	{
