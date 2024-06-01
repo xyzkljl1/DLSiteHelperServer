@@ -9,7 +9,6 @@
 #include <set>
 using namespace Util;
 import DataBase;
-const int SQL_LENGTH_LIMIT = 10000;
 void IDontKnowWhy()
 {
 	//WHy?????

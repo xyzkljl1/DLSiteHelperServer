@@ -23,6 +23,8 @@ public:
 	//参数为1表示true，为0表示false，为-1表示any
 	//and=true表示所有条件都需要满足，否则表示只要满足一个
 	std::vector<DataBase::Work> SelectWorks(bool isAnd, int eliminated = -1, int downloaded = -1, int bought = -1, int specialEliminated = -1);
+	//try "deducing this",not working
+	//std::vector<DataBase::Work> SelectWorks(this DataBase& self, bool isAnd, int eliminated = -1, int downloaded = -1, int bought = -1, int specialEliminated = -1);
 	std::vector<std::string> SelectWorksId(bool isAnd, int eliminated = -1, int downloaded = -1, int bought = -1, int specialEliminated = -1);
 	int SelectWorksCount(bool isAnd, int eliminated = -1, int downloaded = -1, int bought = -1, int specialEliminated = -1);
 	void SetWorksInfo(const std::map<std::string, std::string>& id_info_map);
@@ -91,6 +93,32 @@ std::vector<DataBase::Work> DataBase::SelectWorks(bool isAnd, int eliminated, in
 	mysql_free_result(result);
 	return std::vector<DataBase::Work>();
 }
+/*
+// got "sorry: not yet implemented"
+//Deducing this 会让函数内部如同static函数，调用成员都需用self.fun()而不能用fun()，也不能用this
+std::vector<DataBase::Work> DataBase::SelectWorks(this DataBase& self, bool isAnd, int eliminated, int downloaded, int bought, int specialEliminated)
+{
+	std::vector<DataBase::Work> ret;
+	std::string sql = "select id,eliminated,downloaded,bought,specialEliminated,info from works"
+		+ self.GetWhereClause(isAnd, eliminated, downloaded, bought, specialEliminated) + ";";
+	mysql_query(&self.my_sql, sql.c_str());
+	auto result = mysql_store_result(&self.my_sql);
+	if (mysql_errno(&self.my_sql))
+		LogError("%s\n", mysql_error(&self.my_sql));
+	MYSQL_ROW row;
+	while (row = mysql_fetch_row(result))
+	{
+		Work work;
+		work.id = row[0];
+		work.eliminated = atoi(row[1]);
+		work.downloaded = atoi(row[2]);
+		work.bought = atoi(row[3]);
+		work.specialEliminated = atoi(row[4]);
+		work.info = row[5];
+	}
+	mysql_free_result(result);
+	return std::vector<DataBase::Work>();
+}*/
 
 std::vector<std::string> DataBase::SelectWorksId(bool isAnd, int eliminated, int downloaded, int bought, int specialEliminated)
 {

@@ -29,6 +29,7 @@ protected:
 	void RenameLocal();
 	QStringList GetLocalFiles(const QStringList& root);
 protected:
+	constexpr static int SQL_LENGTH_LIMIT= 10000;
 	DLSiteClient client;
 	QHttpServer qserver;
 	QTimer daily_timer;

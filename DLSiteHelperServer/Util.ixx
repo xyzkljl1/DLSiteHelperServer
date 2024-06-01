@@ -24,7 +24,7 @@ import <set>;
 
 //较常作为std::string用的定义为std::string,否则为QString
 //一会用QString一会用std::string我好烦啊
-export enum WorkType {
+export enum class WorkType {
 	UNKNOWN,//尚未获取到
 	VIDEO,//视频
 	AUDIO,//音频
@@ -36,7 +36,7 @@ export enum WorkType {
 };
 export struct Task {
 	std::string id;//RJ号
-	WorkType type = UNKNOWN;//作品的类型
+	WorkType type = WorkType::UNKNOWN;//作品的类型
 	std::set<std::string> download_ext;//下载的文件(解压前)的格式
 	std::vector<std::string> urls;
 	std::vector<std::string> cookies;
@@ -87,7 +87,8 @@ std::string Task::GetExtractPath() const
 namespace Util {
 	//把字母和数字分别capture的表达式
 	export const std::string WORK_NAME_EXP_SEP = "([RVBJ]{2})([0-9]{3,8})";
-	export const std::string SERIES_NAME_EXP = "^S ";
+	//string具有短字符串优化(SSO)，长度在sso长度(16)以内的可以为constexpr
+	export constexpr std::string SERIES_NAME_EXP = "^S ";
 	export const std::string WORK_NAME_EXP = "[RVBJ]{2}[0-9]{3,8}";
 	export void LogError(const char* _Format, ...)
 	{
