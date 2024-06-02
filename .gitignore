@@ -37,3 +37,4 @@ boost_1_74_0/*
 /x64
 /config.json
 *.user
+/dependencies/cpr.7z
