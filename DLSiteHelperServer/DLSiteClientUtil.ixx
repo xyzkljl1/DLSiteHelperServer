@@ -86,7 +86,7 @@ namespace DLSiteClientUtil {
 		//产品页面的第二级根据是否发售分为work、announce,下载的肯定都是work
 		//获取类型
 		{
-			session.SetRedirect(true);
+			session.SetRedirect(cpr::Redirect{ true });
 			std::string url = Format("https://www.dlsite.com/maniax/work/=/product_id/%s.html", id.c_str());
 			session.SetUrl(cpr::Url{ url });
 			auto res = session.Get();
@@ -98,7 +98,7 @@ namespace DLSiteClientUtil {
 		if (task.type == WorkType::CANTDOWNLOAD)
 			return task;
 		//获取真实连接
-		session.SetRedirect(false);//不能使用自动重定向，因为需要记录重定向前的set-cookie以及判别是否分段下载
+		session.SetRedirect(cpr::Redirect{ false });//不能使用自动重定向，因为需要记录重定向前的set-cookie以及判别是否分段下载
 		//2023-12：maniax/download/=/product_id/%s.html不再能对多文件重定向，多文件需要直接访问maniax/download/split/=/product_id/%s.html
 		//2023-12：分段下载时变为每个文件必须单独使用一个cookie,cookie决定下载哪个文件，例如使用part1的url+part2的cookie时下载的是第二个文件
 		std::string url = Format("https://www.dlsite.com/maniax/download/=/product_id/%s.html", id.c_str());
@@ -118,11 +118,11 @@ namespace DLSiteClientUtil {
 					if (pair.size() > 1)
 					{
 						auto tmp = pair.split('=');
-						download_cookie[q2s(tmp[0])] = q2s(tmp[1]);
+						download_cookie.push_back(cpr::Cookie(q2s(tmp[0]), q2s(tmp[1])));
 					}
 				}
-				for (auto& [key,value] : download_cookie)
-					current_cookie += (key + "=" + value + "; ").c_str();
+				for (auto& cookie : download_cookie)
+					current_cookie += (cookie.GetName() + "=" + cookie.GetValue() + "; ").c_str();
 			}
 			if (res.status_code == 302)
 			{

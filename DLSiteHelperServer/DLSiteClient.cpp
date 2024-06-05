@@ -150,7 +150,7 @@ void DLSiteClient::OnDownloadAborted()
 
 bool DLSiteClient::RenameFile(const std::filesystem::path& file, const std::string& id, const std::wstring& _work_name)
 {
-	std::wstring work_name=std::regex_replace(work_name, std::wregex(L"[/\\\\?*<>:\"|.]"), L"_");
+	std::wstring work_name=std::regex_replace(_work_name, std::wregex(L"[/\\\\?*<>:\"|.]"), L"_");
 	std::wstring old_name = file.filename().wstring();
 	std::wstring new_name = s2w(id) + L" " + work_name;
 	if (old_name == new_name)
@@ -172,10 +172,9 @@ void DLSiteClient::RenameThread(std::vector<std::filesystem::path> local_files)
 {
 	cpr::Session session;//不需要cookie
 	session.SetVerifySsl(cpr::VerifySsl{ false });
-	session.SetProxies(cpr::Proxies{ {std::string("https"), DLConfig::REQUEST_PROXY} });
+	session.SetProxies(cpr::Proxies({ {DLConfig::REQUEST_PROXY_TYPE, DLConfig::REQUEST_PROXY} }));
 	session.SetHeader(cpr::Header{ {"user-agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"} });
-	session.SetRedirect(true);
-
+	session.SetRedirect(cpr::Redirect{true});
 	int ct = 0;
 	for (const auto& file : local_files)
 	{
@@ -254,7 +253,7 @@ void DLSiteClient::StartDownload(const QByteArray& _cookies, const QByteArray& _
 		if (pair.size() > 1)
 		{
 			auto tmp = pair.split('=');
-			cookies[q2s(tmp[0])] = q2s(tmp[1]);
+			cookies.push_back(cpr::Cookie{ q2s(tmp[0]) ,q2s(tmp[1]) });
 		}
 	}
 	std::thread thread(&DLSiteClient::DownloadThread, this, works, cookies, cpr::UserAgent(_user_agent.toStdString()));
@@ -268,7 +267,7 @@ DLSiteClient::WorkInfo DLSiteClient::FetchWorksInfo(const QString& work_id)
 	session.SetVerifySsl(cpr::VerifySsl{ false });
 	session.SetProxies(cpr::Proxies{ {std::string("https"), DLConfig::REQUEST_PROXY} });
 	session.SetHeader(cpr::Header{ {"user-agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"} });
-	session.SetRedirect(true);
+	session.SetRedirect(cpr::Redirect{ true });
 	/*
 	* 翻译作品分两种：独立，组合
 	* 其中"组合"的translation_info的is_parent/is_child为真，parent_workno/child_worknos不为空，形如
@@ -393,11 +392,12 @@ void DLSiteClient::StartRename(const std::vector<std::filesystem::path>& _paths)
 		return;
 	//因为都是在主线程运行，所以这里不需要用原子操作
 	running = true;
+	std::vector<std::filesystem::path> tmp= _paths | std::views::filter([](auto& path) {
+		std::string id = GetIDFromPath(path);
+		return id.size() > 0 && path.filename().wstring().size() < id.size() + 2;
+		})
+		| std::ranges::to<std::vector<std::filesystem::path>>();
 	//参数为input_range auto 时thread无法正确推导类型，因此还是用vector 
-	std::thread thread(&DLSiteClient::RenameThread, this, _paths | std::views::filter([](auto& path) {
-																		std::string id = GetIDFromPath(path);
-																		return id.size() > 0 && path.filename().wstring().size() < id.size() + 2;
-																		})
-	  															 | std::ranges::to<std::vector<std::filesystem::path>>());
+	std::thread thread(&DLSiteClient::RenameThread, this, tmp);
 	thread.detach();
 }

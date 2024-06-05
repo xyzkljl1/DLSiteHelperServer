@@ -25,7 +25,9 @@ void IDontKnowWhy()
 }
 DLSiteHelperServer::DLSiteHelperServer(QObject* parent):qserver(parent)
 {
+#ifndef _DEBUG
 	SyncLocalFileToDB();//启动时立刻更新本地文件
+#endif
 	daily_timer.setInterval(86400*1000);
 	daily_timer.start();
 	//每天更新本地文件并获取workinfo
