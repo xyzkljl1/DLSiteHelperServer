@@ -27,7 +27,7 @@ std::string DataBase::GetWhereClause(bool isAnd, int eliminated, int downloaded,
 		where_clause += std::string(where_clause == "" ? "" : con_str) + "downloaded = " + std::to_string(downloaded);
 	if (bought >= 0)
 		where_clause += std::string(where_clause == "" ? "" : con_str) + "bought = " + std::to_string(bought);
-	if (specialEliminated >= 0)
+	if (specialEliminated >= 0) [[unlikely]]
 		where_clause += std::string(where_clause == "" ? "" : con_str) + "specialEliminated = " + std::to_string(specialEliminated);
 	if (where_clause != "")
 		where_clause = " where " + where_clause;
@@ -41,7 +41,7 @@ std::vector<DataBase::Work> DataBase::SelectWorks(bool isAnd, int eliminated, in
 		+ GetWhereClause(isAnd, eliminated, downloaded, bought, specialEliminated) + ";";
 	mysql_query(&my_sql, sql.c_str());
 	auto result = mysql_store_result(&my_sql);
-	if (mysql_errno(&my_sql))
+	if (mysql_errno(&my_sql)) [[unlikely]]
 		LogError("%s\n", mysql_error(&my_sql));
 	MYSQL_ROW row;
 	while (row = mysql_fetch_row(result))
@@ -90,7 +90,7 @@ std::vector<std::string> DataBase::SelectWorksId(bool isAnd, int eliminated, int
 	std::string sql = "select id from works" + GetWhereClause(isAnd, eliminated, downloaded, bought, specialEliminated) + ";";
 	mysql_query(&my_sql, sql.c_str());
 	auto result = mysql_store_result(&my_sql);
-	if (mysql_errno(&my_sql))
+	if (mysql_errno(&my_sql)) [[unlikely]]
 		LogError("%s\n", mysql_error(&my_sql));
 	MYSQL_ROW row;
 	while (row = mysql_fetch_row(result))
@@ -104,7 +104,7 @@ int DataBase::SelectWorksCount(bool isAnd, int eliminated, int downloaded, int b
 	std::string sql = "select count(*) from works" + GetWhereClause(isAnd, eliminated, downloaded, bought, specialEliminated) + ";";
 	mysql_query(&my_sql, sql.c_str());
 	auto result = mysql_store_result(&my_sql);
-	if (mysql_errno(&my_sql))
+	if (mysql_errno(&my_sql)) [[unlikely]]
 		LogError("%s\n", mysql_error(&my_sql));
 	int ret = 0;
 	MYSQL_ROW row;
@@ -120,7 +120,7 @@ std::vector<std::string> DataBase::SelectWorksIdWithoutInfo(int limit)
 	std::string sql = "select id from works where info is null limit " + std::to_string(limit) + ";";
 	mysql_query(&my_sql, sql.c_str());
 	auto result = mysql_store_result(&my_sql);
-	if (mysql_errno(&my_sql))
+	if (mysql_errno(&my_sql)) [[unlikely]]
 		LogError("%s\n", mysql_error(&my_sql));
 	MYSQL_ROW row;
 	while (row = mysql_fetch_row(result))
@@ -134,7 +134,7 @@ std::vector<std::pair<std::string, std::string>> DataBase::SelectOverlaps()
 	std::vector<std::pair<std::string, std::string>> ret;
 	mysql_query(&my_sql, "select Main,Sub from overlap;");
 	auto result = mysql_store_result(&my_sql);
-	if (mysql_errno(&my_sql))
+	if (mysql_errno(&my_sql)) [[unlikely]]
 		LogError("%s\n", mysql_error(&my_sql));
 	MYSQL_ROW row;
 	while (row = mysql_fetch_row(result))
@@ -163,7 +163,7 @@ std::string DataBase::GetSQLUpdateWork(const std::string& id, int eliminated, in
 		set_clause += std::string(set_clause == "" ? "" : ",") + "downloaded = " + std::to_string(downloaded);
 	if (bought >= 0)
 		set_clause += std::string(set_clause == "" ? "" : ",") + "bought = " + std::to_string(bought);
-	if (specialEliminated >= 0)
+	if (specialEliminated >= 0) [[unlikely]]
 		set_clause += std::string(set_clause == "" ? "" : ",") + "specialEliminated = " + std::to_string(specialEliminated);
 
 	if (set_clause == "")
@@ -175,7 +175,7 @@ void DataBase::SetWorksInfo(const std::map<std::string, std::string>& id_info_ma
 {
 	MYSQL_STMT* stmt = mysql_stmt_init(&my_sql);
 	std::string sql = "UPDATE works set info=? where id=?;";
-	if (mysql_stmt_prepare(stmt, sql.c_str(), sql.length()) != 0)
+	if (mysql_stmt_prepare(stmt, sql.c_str(), sql.length()) != 0) [[unlikely]]
 	{
 		LogError("database error.");
 		std::string err = mysql_error(&my_sql);
@@ -204,6 +204,6 @@ void DataBase::SendQuery(std::string& cmd)
 	do mysql_free_result(mysql_store_result(&my_sql));
 	while (!mysql_next_result(&my_sql));
 	cmd = "";
-	if (mysql_errno(&my_sql))
+	if (mysql_errno(&my_sql)) [[unlikely]]
 		LogError("%s\n", mysql_error(&my_sql));
 }
