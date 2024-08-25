@@ -137,6 +137,8 @@ echo D|xcopy "$(QtDllPath)/Qt6Networkd.dll" "$(TargetDir)" /y /C
   <ItemGroup>
     <ClCompile Include="Aria2Downloader.cpp" />
     <ClCompile Include="BaseDownloader.cpp" />
+    <ClCompile Include="DataBase.cpp" />
+    <ClCompile Include="DataBase-Imp2.ixx" />
     <ClCompile Include="DataBase.ixx" />
     <ClCompile Include="DLConfig.ixx" />
     <ClCompile Include="DLSiteClient.cpp" />
