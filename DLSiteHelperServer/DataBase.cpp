@@ -52,10 +52,11 @@ std::vector<DataBase::Work> DataBase::SelectWorks(bool isAnd, int eliminated, in
 		work.downloaded = atoi(row[2]);
 		work.bought = atoi(row[3]);
 		work.specialEliminated = atoi(row[4]);
-		work.info = row[5];
+		work.info = row[5]?row[5]:"";
+		ret.push_back(work);
 	}
 	mysql_free_result(result);
-	return std::vector<DataBase::Work>();
+	return ret;
 }
 /*
 // got "sorry: not yet implemented"

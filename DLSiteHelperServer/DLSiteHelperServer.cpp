@@ -3,6 +3,10 @@
 #include <qregularexpression.h>
 #include <QDir>
 #include <QUrl>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QMetaType>
 #include <ranges>
 #include <string>
 #include <map>
@@ -35,6 +39,47 @@ DLSiteHelperServer::DLSiteHelperServer(QObject* parent):qserver(parent)
 	qserver.route("/", [this](const QHttpServerRequest& request, QHttpServerResponder&& response) { this->HandleRequest(request,std::move(response)); });
 	//通过HKEY_LOCAL_MACHINE/SYSTEM/CurrentControlSet/Services/Tcpip/Parameters/ReservedPorts项将端口设为保留
 	qserver.listen(QHostAddress::Any, DLConfig::SERVER_PORT);
+	DailyTask();
+	/*
+	{
+	// 将以前没有正确分类的中文作品移动过去
+		{
+			std::string cmd;
+			DataBase database;
+			std::map<std::string, std::filesystem::path> currentdir_downloaded_works;//当前目录的已下载作品，id-dir
+			std::set<int> groups{ 37402, 39804, 46806, 47550, 48509, 49620, 50114, 53009, 57900, 64294, 63553, 64435, 64486,
+																  65763, 68414,  68414, 68744, 70687, 74042, 74454, 1001551, 1005315, 1005809,
+																  1006167, 1001621, 1009187, 1011490, 1012045, 1012472, 1017685, 1036219, 1045004, 1054049, 1054434 };
+			std::set<std::string> cn_works{};
+			{
+				std::vector<DataBase::Work> download_works = database.SelectWorks(true, false, true, -1, -1);
+				for (auto& i : download_works)
+				{
+					QJsonParseError error;
+					QJsonDocument doc = QJsonDocument::fromJson(i.info.c_str(), &error);
+					if (error.error != QJsonParseError::NoError || !doc.object().contains(s2q(i.id)))
+						continue;
+					auto maker = doc.object().value(s2q(i.id)).toObject().value("maker_id").toString();
+					QRegExp reg("[A-Z]+([0-9]+)");
+					reg.indexIn(maker);
+					int id = reg.cap(1).toInt();
+					if (groups.count(id))
+						cn_works.insert(i.id);
+				}
+			}
+			//依序遍历local_dirs,查找已下载的作品去重，如果下载了多个互相覆盖的作品，保留靠前的目录中的文件
+			std::error_code errorcode;
+			for (auto& root_dir : {"Z:/ASMR_ReliableR/"})
+				for (auto& dir : GetLocalFiles(std::vector<std::string>{ root_dir }))
+				{
+					std::string id = GetIDFromPath(dir);
+					if (!cn_works.count(id))
+						continue;
+					std::filesystem::path target_dir = std::filesystem::path("Z:/ASMR_Chinese/") / dir.filename();
+					std::filesystem::rename(dir,target_dir);
+				}
+		}
+	}*/
 }
 
 DLSiteHelperServer::~DLSiteHelperServer()
@@ -386,7 +431,7 @@ void DLSiteHelperServer::FetchWorkInfo(int limit)
 		DLSiteClient::WorkInfo res=client.FetchWorksInfo(s2q(id));
  		QStringList translations = res.translations;
 		//如果有多语言版本则标记覆盖
-		if (translations.count() > 1)
+		if (translations.count() > 1 && res.maker_id != "RG01017685") // らびっと楽園(Love兎樂園)是例外，中文版是中文配音而非中文文本翻译。
 		{
 			ct1++;
 			ct2 +=translations.count();

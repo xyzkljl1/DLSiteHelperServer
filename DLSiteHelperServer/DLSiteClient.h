@@ -18,6 +18,7 @@ class DLSiteClient:public QObject
 public:
 	struct WorkInfo {
 		QString work_info_text;//info原文
+		QString maker_id;//社团名
 		QStringList translations;//多语言版本
 		bool is_otm=false;//乙女向
 	};

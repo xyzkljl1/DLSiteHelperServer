@@ -346,6 +346,8 @@ DLSiteClient::WorkInfo DLSiteClient::FetchWorksInfo(const QString& work_id)
 		if (work_info.contains("options"))
 			if (work_info.value("options").toString().contains("OTM"))//乙女向
 				ret.is_otm = true;
+		if (work_info.contains("maker_id")) // 社团
+			ret.maker_id = work_info.value("maker_id").toString();
 		//找到所有dl_count_items
 		if (work_info.contains("dl_count_items"))
 			for (const QJsonValue& item : work_info.value("dl_count_items").toArray())
