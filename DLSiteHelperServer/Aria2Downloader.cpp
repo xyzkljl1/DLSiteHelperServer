@@ -129,7 +129,8 @@ void Aria2Downloader::CheckAria2Status(bool init) {
 		aria2_process->setProcessEnvironment(QProcessEnvironment::systemEnvironment());
 		aria2_process->setProgram("\"" + QCoreApplication::applicationDirPath() + "/aria2/aria2c(DLSite).exe\"");//有括号/空格的路径需要用引号括起来
 		aria2_process->setArguments({ "--conf-path=aria2.conf","--all-proxy=" + DLConfig::ARIA2_PROXY,
-									QString("--rpc-listen-port=%1").arg(DLConfig::ARIA2_PORT),/*"--referer=\"https://www.dlsite.com/\"","--check-certificate=false"*/ });
+									QString("--rpc-listen-port=%1").arg(DLConfig::ARIA2_PORT),
+									QString("--stop-with-process=%1").arg(GetCurrentProcessId()),/*"--referer=\"https://www.dlsite.com/\"","--check-certificate=false"*/ });
 #ifdef _DEBUG
 		//显示窗口
 		aria2_process->setCreateProcessArgumentsModifier(
