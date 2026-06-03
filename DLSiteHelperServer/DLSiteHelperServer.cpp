@@ -363,8 +363,8 @@ void DLSiteHelperServer::SyncLocalFileToDB()
 				//同目录覆盖作品会因为遍历顺序漏掉一部分，例如A单向覆盖B，先遍历B再遍历A，则B不会在此处被删除，在下方补充判断currentdir_downloaded_works
 				//传入error code时，返回-1表示失败；不传入时失败抛出异常
 				//目录不存在也算成功
-				if (std::filesystem::remove_all(dir, errorcode)<0)
-					LogEx("Can't Remove {}\n", w2s(dir.wstring()));
+				if (std::filesystem::remove_all(dir, errorcode) == static_cast<std::uintmax_t>(-1))
+					LogEx("Can't Remove {} {}\n", w2s(dir.wstring()), errorcode.message());
 				else
 					LogEx("Remove Eliminated: {}\n", w2s(dir.wstring()));
 			}
@@ -384,8 +384,8 @@ void DLSiteHelperServer::SyncLocalFileToDB()
 						//如果覆盖了同目录下其它作品，则把之前的作品删除(该作品进入了该if说明两者不是双向覆盖，而是该作品单向覆盖之前的作品)
 						if (currentdir_downloaded_works.count(sub_id))
 						{
-							if (std::filesystem::remove_all(currentdir_downloaded_works[sub_id], errorcode) < 0)
-								LogEx("Can't Remove {}\n", w2s(currentdir_downloaded_works[sub_id].wstring()));
+							if (std::filesystem::remove_all(currentdir_downloaded_works[sub_id], errorcode) == static_cast<std::uintmax_t>(-1))
+								LogEx("Can't Remove {} {}\n", w2s(currentdir_downloaded_works[sub_id].wstring()), errorcode.message());
 							else
 								LogEx("Remove Eliminated: {}\n", w2s(currentdir_downloaded_works[sub_id].wstring()));
 							currentdir_downloaded_works.erase(sub_id);
