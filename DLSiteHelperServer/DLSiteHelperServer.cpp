@@ -18,6 +18,31 @@
 #include <set>
 using namespace Util;
 import DataBase;
+
+namespace
+{
+	std::filesystem::path ToLongPath(const std::filesystem::path& path)
+	{
+#ifdef _WIN32
+		std::error_code ec;
+		auto absolute_path = std::filesystem::absolute(path, ec);
+		std::wstring native_path = (ec ? path : absolute_path).wstring();
+		for (auto& ch : native_path)
+			if (ch == L'/')
+				ch = L'\\';
+
+		if (native_path.rfind(L"\\\\?\\", 0) == 0)
+			return std::filesystem::path(native_path);
+		if (native_path.rfind(L"\\\\", 0) == 0)
+			return std::filesystem::path(L"\\\\?\\UNC\\" + native_path.substr(2));
+		return std::filesystem::path(L"\\\\?\\" + native_path);
+#else
+		return path;
+#endif
+	}
+
+}
+
 void IDontKnowWhy()
 {
 	//WHy?????
@@ -39,7 +64,8 @@ DLSiteHelperServer::DLSiteHelperServer(QObject* parent):qserver(parent)
 	qserver.route("/", [this](const QHttpServerRequest& request, QHttpServerResponder&& response) { this->HandleRequest(request,std::move(response)); });
 	//通过HKEY_LOCAL_MACHINE/SYSTEM/CurrentControlSet/Services/Tcpip/Parameters/ReservedPorts项将端口设为保留
 	qserver.listen(QHostAddress::Any, DLConfig::SERVER_PORT);
-	DailyTask();
+	//DailyTask();
+	SyncLocalFileToDB();
 	/*
 	{
 	// 将以前没有正确分类的中文作品移动过去
@@ -346,7 +372,6 @@ void DLSiteHelperServer::SyncLocalFileToDB()
 						overlapped_works.insert(j);
 	}
 	//依序遍历local_dirs,查找已下载的作品去重，如果下载了多个互相覆盖的作品，保留靠前的目录中的文件
-	std::error_code errorcode;
 	for (auto& root_dir : DLConfig::local_dirs)
 	{
 		currentdir_downloaded_works.clear();
@@ -363,10 +388,12 @@ void DLSiteHelperServer::SyncLocalFileToDB()
 				//同目录覆盖作品会因为遍历顺序漏掉一部分，例如A单向覆盖B，先遍历B再遍历A，则B不会在此处被删除，在下方补充判断currentdir_downloaded_works
 				//传入error code时，返回-1表示失败；不传入时失败抛出异常
 				//目录不存在也算成功
-				if (std::filesystem::remove_all(dir, errorcode) == static_cast<std::uintmax_t>(-1))
-					LogEx("Can't Remove {} {}\n", w2s(dir.wstring()), errorcode.message());
+				std::error_code errorcode;
+				auto removed = std::filesystem::remove_all(ToLongPath(dir), errorcode);
+				if (errorcode || removed == static_cast<std::uintmax_t>(-1))
+					LogEx("Can't Remove {} {} removed={}\n", w2s(dir.wstring()), errorcode.message(), removed);
 				else
-					LogEx("Remove Eliminated: {}\n", w2s(dir.wstring()));
+					LogEx("Remove Eliminated: {} removed={}\n", w2s(dir.wstring()), removed);
 			}
 			else
 			{
@@ -384,10 +411,12 @@ void DLSiteHelperServer::SyncLocalFileToDB()
 						//如果覆盖了同目录下其它作品，则把之前的作品删除(该作品进入了该if说明两者不是双向覆盖，而是该作品单向覆盖之前的作品)
 						if (currentdir_downloaded_works.count(sub_id))
 						{
-							if (std::filesystem::remove_all(currentdir_downloaded_works[sub_id], errorcode) == static_cast<std::uintmax_t>(-1))
-								LogEx("Can't Remove {} {}\n", w2s(currentdir_downloaded_works[sub_id].wstring()), errorcode.message());
+							std::error_code errorcode;
+							auto removed = std::filesystem::remove_all(ToLongPath(currentdir_downloaded_works[sub_id]), errorcode);
+							if (errorcode || removed == static_cast<std::uintmax_t>(-1))
+								LogEx("Can't Remove {} {} removed={}\n", w2s(currentdir_downloaded_works[sub_id].wstring()), errorcode.message(), removed);
 							else
-								LogEx("Remove Eliminated: {}\n", w2s(currentdir_downloaded_works[sub_id].wstring()));
+								LogEx("Remove Eliminated: {} removed={}\n", w2s(currentdir_downloaded_works[sub_id].wstring()), removed);
 							currentdir_downloaded_works.erase(sub_id);
 							downloaded_works.erase(sub_id);
 						}
