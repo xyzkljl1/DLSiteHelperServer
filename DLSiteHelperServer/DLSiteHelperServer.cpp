@@ -65,7 +65,7 @@ DLSiteHelperServer::DLSiteHelperServer(QObject* parent):qserver(parent)
 	//通过HKEY_LOCAL_MACHINE/SYSTEM/CurrentControlSet/Services/Tcpip/Parameters/ReservedPorts项将端口设为保留
 	qserver.listen(QHostAddress::Any, DLConfig::SERVER_PORT);
 	//DailyTask();
-	SyncLocalFileToDB();
+	//SyncLocalFileToDB();
 	/*
 	{
 	// 将以前没有正确分类的中文作品移动过去
