@@ -9,6 +9,7 @@
 #include <regex>
 #include <future>
 #include <ranges>
+#include <map>
 #include <QDir>
 #include <QFile>
 #include <QCoreApplication>
@@ -16,6 +17,7 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QMetaType>
+#include <QRegExp>
 #include "cpr/cpr.h"
 #include "Aria2Downloader.h"
 #include "DLSiteClient.h"
@@ -24,6 +26,47 @@ import Util;
 import DLConfig;
 import DLSiteClientUtil;
 class BaseDownloader;
+
+namespace
+{
+	cpr::Cookies ParseCookieString(const QByteArray& cookie_text)
+	{
+		cpr::Cookies cookies;
+		for (auto pair : cookie_text.split(';'))
+		{
+			pair = pair.trimmed();
+			int sep = pair.indexOf('=');
+			if (sep > 0)
+				cookies.push_back(cpr::Cookie{ q2s(pair.left(sep)), q2s(pair.mid(sep + 1)) });
+		}
+		return cookies;
+	}
+
+	std::map<std::string, cpr::Cookies> ParseDownloadCookies(const QByteArray& cookie_payload)
+	{
+		std::map<std::string, cpr::Cookies> cookies_by_work;
+		QJsonParseError json_error;
+		QJsonDocument doc = QJsonDocument::fromJson(cookie_payload, &json_error);
+		if (json_error.error != QJsonParseError::NoError || !doc.isObject())
+			return cookies_by_work;
+		QJsonObject root = doc.object();
+		if (!root.value("items").isArray())
+			return cookies_by_work;
+
+		QRegExp work_reg(WORK_NAME_EXP.c_str());
+		for (const QJsonValue& value : root.value("items").toArray())
+		{
+			if (!value.isObject())
+				continue;
+			QJsonObject item = value.toObject();
+			QString id = item.value("id").toString();
+			if (!work_reg.exactMatch(id))
+				continue;
+			cookies_by_work[q2s(id)] = ParseCookieString(item.value("cookies").toString().toUtf8());
+		}
+		return cookies_by_work;
+	}
+}
 
 Q_DECLARE_METATYPE(std::vector<Task>)
 DLSiteClient::DLSiteClient()
@@ -215,19 +258,28 @@ QPair<QString, QJsonObject> DLSiteClient::GetWorkInfoFromDLSiteAPI(cpr::Session&
 	}
 }
 
-void DLSiteClient::DownloadThread(QStringList works, cpr::Cookies cookie, cpr::UserAgent user_agent)
+void DLSiteClient::DownloadThread(QStringList works, std::map<std::string, cpr::Cookies> cookies, cpr::UserAgent user_agent)
 {
 	std::vector<Task> task_list;
 	std::map<std::string, std::future<Task>> futures;
 	QStringList tmp;
 	for (const auto& id : works)
-		futures[q2s(id)] = std::async(&DLSiteClientUtil::MakeDownloadTask, q2s(id), cookie, user_agent);
+	{
+		std::string work_id = q2s(id);
+		auto cookie_iter = cookies.find(work_id);
+		if (cookie_iter == cookies.end())
+		{
+			LogError("Missing Cookie On %s\n", work_id.c_str());
+			continue;
+		}
+		futures[work_id] = std::async(&DLSiteClientUtil::MakeDownloadTask, work_id, cookie_iter->second, user_agent);
+	}
 	for (auto& [_,future] : futures)//应该用whenall,但是并没有
 		task_list.push_back(future.get());
 
 	//有时会下载失败403，疑似是因为cookie失效，在chrome里手动尝试下载任意文件可解
 	//TODO: fix it
-	if (!downloader->StartDownload(task_list, cookie, user_agent))
+	if (!downloader->StartDownload(task_list, cookies, user_agent))
 	{
 		LogError("Cant Start Download\n");
 		running = false;
@@ -246,16 +298,7 @@ void DLSiteClient::StartDownload(const QByteArray& _cookies, const QByteArray& _
 	}
 	//因为都是在主线程运行，所以这里不需要用原子操作
 	running = true;
-	cpr::Cookies cookies;
-	for (auto& pair : _cookies.split(';'))
-	{
-		pair = pair.trimmed();
-		if (pair.size() > 1)
-		{
-			auto tmp = pair.split('=');
-			cookies.push_back(cpr::Cookie{ q2s(tmp[0]) ,q2s(tmp[1]) });
-		}
-	}
+	auto cookies = ParseDownloadCookies(_cookies);
 	std::thread thread(&DLSiteClient::DownloadThread, this, works, cookies, cpr::UserAgent(_user_agent.toStdString()));
 	thread.detach();
 }

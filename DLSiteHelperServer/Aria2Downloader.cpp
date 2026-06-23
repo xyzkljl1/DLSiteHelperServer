@@ -24,12 +24,12 @@ Aria2Downloader::~Aria2Downloader()
 	if (aria2_process)
 		aria2_process->kill();		
 }
-bool Aria2Downloader::StartDownload(const std::vector<Task>& _tasks, const cpr::Cookies& _cookie, const cpr::UserAgent& _user_agent)
+bool Aria2Downloader::StartDownload(const std::vector<Task>& _tasks, const std::map<std::string, cpr::Cookies>& _cookies, const cpr::UserAgent& _user_agent)
 {
 	if (running)
 		return false;
 	running = true;
-	main_cookie = _cookie;
+	main_cookies = _cookies;
 	user_agent = _user_agent;
 
 	task_list.clear();
@@ -215,7 +215,13 @@ bool Aria2Downloader::CheckTaskStatus(bool init)
 		if (update_index.empty())
 			continue;
 		if (!init)//如果不是第一次创建任务，失效的任务可能是由于cookie过期，需要重新获取
-			task.cookies = DLSiteClientUtil::MakeDownloadTask(task.id, main_cookie, user_agent).cookies;
+		{
+			auto cookie_iter = main_cookies.find(task.id);
+			if (cookie_iter != main_cookies.end())
+				task.cookies = DLSiteClientUtil::MakeDownloadTask(task.id, cookie_iter->second, user_agent).cookies;
+			else
+				LogError("Missing Cookie On Retry %s\n", task.id.c_str());
+		}
 		//更新子任务
 		std::string path = task.GetDownloadDir();
 		if (!QDir(QString::fromLocal8Bit(path.c_str())).exists())

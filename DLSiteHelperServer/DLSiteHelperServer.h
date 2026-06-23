@@ -22,6 +22,7 @@ protected:
 	QString UpdateBoughtItems(const QByteArray& data);
 
 	[[nodiscard]] std::map<std::string, std::set<std::string>> GetAllOverlapWorks();
+	[[nodiscard]] QStringList GetDownloadWorks();
 	void DailyTask();
 	void SyncLocalFileToDB();
 	void FetchWorkInfo(int limit=100);//从DLSite获取workinfo并存入数据库

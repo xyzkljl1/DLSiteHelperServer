@@ -133,17 +133,40 @@ void DLSiteHelperServer::HandleRequest(const QHttpServerRequest & request, QHttp
 	}
 	else if (request_target.startsWith("/?Download"))
 	{
-		Log("Trying to start download,this may take few minutes");
-		SyncLocalFileToDB();
-		//user-agent与cookie需要符合，user-agent通过请求的user-agent，cookie通过请求的data获得
-		//request.headers()["user-agent"]
-		QByteArray useragent;
-		for (auto& [header,value] : request.headers())
-			if (header.toLower() == "user-agent")
-				useragent = value;
-		DownloadAll(request.body(), useragent);
-		ReplyText(std::move(response), QHttpServerResponder::StatusCode::Ok, "Started");
-		Log("std::move(response) Download Request\n");
+		QJsonParseError json_error;
+		QJsonDocument doc = QJsonDocument::fromJson(request.body(), &json_error);
+		if (json_error.error != QJsonParseError::NoError || !doc.isObject())
+		{
+			ReplyText(std::move(response), QHttpServerResponder::StatusCode::BadRequest, "Invalid Download Request");
+			LogError("Invalid Download Request\n");
+			return;
+		}
+		QJsonObject root = doc.object();
+		if (root.value("stage").toString() == "query")
+		{
+			Log("Prepare Download Request, sync local files first\n");
+			SyncLocalFileToDB();
+			auto ret = GetDownloadWorks().join(" ");
+			ReplyText(std::move(response), QHttpServerResponder::StatusCode::Ok, ret);
+			Log("std::move(response) Prepare Download Request\n");
+			return;
+		}
+		if (root.value("items").isArray())
+		{
+			Log("Trying to start download,this may take few minutes");
+			//user-agent与cookie需要符合，user-agent通过请求的user-agent，cookie通过请求的data获得
+			//request.headers()["user-agent"]
+			QByteArray useragent;
+			for (auto& [header,value] : request.headers())
+				if (header.toLower() == "user-agent")
+					useragent = value;
+			DownloadAll(request.body(), useragent);
+			ReplyText(std::move(response), QHttpServerResponder::StatusCode::Ok, "Started");
+			Log("std::move(response) Download Request\n");
+			return;
+		}
+		ReplyText(std::move(response), QHttpServerResponder::StatusCode::BadRequest, "Invalid Download Request");
+		LogError("Invalid Download Request\n");
 	}
 	else if (request_target.startsWith("/?RenameLocal")) {
 		RenameLocal();
@@ -487,7 +510,7 @@ void DLSiteHelperServer::FetchWorkInfo(int limit)
 	Log("Fetched %zd. Marked %d group/%d works of translation.", id_info_map.size(), ct1, ct2);
 }
 
-void DLSiteHelperServer::DownloadAll(const QByteArray&cookie, const QByteArray& user_agent)
+QStringList DLSiteHelperServer::GetDownloadWorks()
 {
 	QStringList works;
 	DataBase database;
@@ -510,6 +533,12 @@ void DLSiteHelperServer::DownloadAll(const QByteArray&cookie, const QByteArray& 
 			if (!not_expected_works.count(id))
 				works.push_back(s2q(id));
 	}
+	return works;
+}
+
+void DLSiteHelperServer::DownloadAll(const QByteArray&cookie, const QByteArray& user_agent)
+{
+	QStringList works = GetDownloadWorks();
 	client.StartDownload(cookie,user_agent,works);
 }
 

@@ -6,6 +6,7 @@
 #include <set>
 #include <vector>
 #include <filesystem>
+#include <map>
 #include "cpr/cpr.h"
 import Util;
 /*
@@ -33,7 +34,7 @@ public:
 protected:
 	//以防万一直接传值
 	void RenameThread(std::vector<std::filesystem::path> local_files);
-	void DownloadThread(QStringList works,cpr::Cookies cookie,cpr::UserAgent user_agent);
+	void DownloadThread(QStringList works,std::map<std::string, cpr::Cookies> cookies,cpr::UserAgent user_agent);
 	static bool RenameFile(const std::filesystem::path& file, const std::string & id, const std::wstring& work_name);
 
 	//返回response和派生为JsonObject的response

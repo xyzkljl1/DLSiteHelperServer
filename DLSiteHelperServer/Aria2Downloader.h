@@ -1,4 +1,6 @@
 ﻿#include "BaseDownloader.h"
+#include <map>
+#include <string>
 import Util;
 import DLConfig;
 using namespace Util;
@@ -18,7 +20,7 @@ public:
 	};
 	Aria2Downloader();
 	~Aria2Downloader();
-	bool StartDownload(const std::vector<Task>& _tasks, const cpr::Cookies& _cookie, const cpr::UserAgent& _user_agent) override;
+	bool StartDownload(const std::vector<Task>& _tasks, const std::map<std::string, cpr::Cookies>& _cookies, const cpr::UserAgent& _user_agent) override;
 protected:
 	void CheckThread();
 	//检查任务状态，如不正常则重新获取cookie并重启任务，is_first_time为真时是第一次执行
@@ -29,7 +31,7 @@ protected:
 
 	std::vector<Aria2Task> task_list;
 	QProcess* aria2_process=nullptr;
-	cpr::Cookies main_cookie;
+	std::map<std::string, cpr::Cookies> main_cookies;
 	cpr::UserAgent user_agent;
 	std::atomic_bool running = false;
 };
