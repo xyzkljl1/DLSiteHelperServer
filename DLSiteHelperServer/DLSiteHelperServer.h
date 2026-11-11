@@ -28,7 +28,13 @@ protected:
 	void FetchWorkInfo(int limit=100);//从DLSite获取workinfo并存入数据库
 	void DownloadAll(const QByteArray& cookie, const QByteArray& user_agent);
 	void RenameLocal();
-	[[nodiscard]] std::vector<std::filesystem::path> GetLocalFiles(const std::vector<std::string>& root);
+	struct LocalScanDir
+	{
+		std::filesystem::path path;
+		bool rj_only = false;
+	};
+	[[nodiscard]] std::vector<LocalScanDir> GetLocalScanDirs(const std::vector<std::string>& roots);
+	[[nodiscard]] std::vector<std::filesystem::path> GetLocalFiles(const LocalScanDir& root);
 protected:
 	constexpr static int SQL_LENGTH_LIMIT= 10000;
 	DLSiteClient client;

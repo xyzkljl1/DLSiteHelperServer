@@ -237,6 +237,9 @@ namespace Util {
 			for (auto dir : root.value(key).toArray())
 				DLConfig::local_dirs.emplace_back(q2s(dir.toString()));
 		}
+		key = "local_lsf_dir";
+		if (root.contains(key) && root.value(key).isString())
+			DLConfig::local_lsf_dir = root.value(key).toString();
 		key = "local_tmp_dirs";
 		if (root.contains(key) && root.value(key).isArray())
 		{

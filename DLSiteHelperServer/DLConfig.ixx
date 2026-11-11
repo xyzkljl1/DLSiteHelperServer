@@ -13,6 +13,7 @@ public:
 	//存储目录，位于local_dirs的文件夹视作已下载
 	//有序！当不同目录存在相互覆盖的work时，优先保留靠前的目录中的文件
 	inline static std::vector<std::string> local_dirs{ "/Archive/" };
+	inline static QString local_lsf_dir = "G:/Pics/fav/";
 	//位于local_tmp_dirs的文件仅用于重命名
 	inline static std::vector<std::string> local_tmp_dirs{ "/Tmp/" };
 	//下载目录,新任务会被下载到这个目录

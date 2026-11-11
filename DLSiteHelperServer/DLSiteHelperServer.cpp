@@ -2,6 +2,7 @@
 #include "mysql.h"
 #include <qregularexpression.h>
 #include <QDir>
+#include <QFileInfo>
 #include <QUrl>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -395,10 +396,10 @@ void DLSiteHelperServer::SyncLocalFileToDB()
 						overlapped_works.insert(j);
 	}
 	//依序遍历local_dirs,查找已下载的作品去重，如果下载了多个互相覆盖的作品，保留靠前的目录中的文件
-	for (auto& root_dir : DLConfig::local_dirs)
+	for (const auto& root_dir : GetLocalScanDirs(DLConfig::local_dirs))
 	{
 		currentdir_downloaded_works.clear();
-		for (auto& dir : GetLocalFiles(std::vector<std::string>{ root_dir }))
+		for (auto& dir : GetLocalFiles(root_dir))
 		{
 			std::string id = GetIDFromPath(dir);
 			if (id.empty())
@@ -544,36 +545,71 @@ void DLSiteHelperServer::DownloadAll(const QByteArray&cookie, const QByteArray& 
 
 void DLSiteHelperServer::RenameLocal()
 {
-	client.StartRename(GetLocalFiles(ConcatVector(DLConfig::local_dirs, DLConfig::local_tmp_dirs)));
+	std::vector<std::filesystem::path> local_files;
+	for (const auto& root : GetLocalScanDirs(ConcatVector(DLConfig::local_dirs, DLConfig::local_tmp_dirs)))
+	{
+		auto files = GetLocalFiles(root);
+		local_files.insert(local_files.end(), files.begin(), files.end());
+	}
+	client.StartRename(local_files);
+}
+
+std::vector<DLSiteHelperServer::LocalScanDir> DLSiteHelperServer::GetLocalScanDirs(const std::vector<std::string>& roots)
+{
+	std::vector<LocalScanDir> ret;
+	std::set<QString> known_dirs;
+	for (const auto& root : roots)
+	{
+		ret.push_back({ std::filesystem::path(root), false });
+		auto canonical_path = QFileInfo(s2q(root)).canonicalFilePath();
+		if (!canonical_path.isEmpty())
+			known_dirs.insert(canonical_path.toCaseFolded());
+	}
+	if (DLConfig::local_lsf_dir.isEmpty())
+		return ret;
+
+	QDir lsf_root(DLConfig::local_lsf_dir);
+	for (const auto& author : lsf_root.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name))
+	{
+		QFileInfo lsf_dir(QDir(author.absoluteFilePath()).filePath("lsf"));
+		if (!lsf_dir.isDir())
+			continue;
+		auto canonical_path = lsf_dir.canonicalFilePath();
+		if (canonical_path.isEmpty() || !known_dirs.insert(canonical_path.toCaseFolded()).second)
+			continue;
+		ret.push_back({ std::filesystem::path(lsf_dir.absoluteFilePath().toStdWString()), true });
+	}
+	return ret;
 }
 
 //获得指定根目录下所有work的路径
 //遍历根目录下一级以及根目录下[以SERIES_NAME_EXP开头的目录]的下一级
-std::vector<std::filesystem::path> DLSiteHelperServer::GetLocalFiles(const std::vector<std::string>& root)
+std::vector<std::filesystem::path> DLSiteHelperServer::GetLocalFiles(const LocalScanDir& root)
 {
 	std::vector<std::filesystem::path> ret;
-	std::regex regex_is_work(WORK_NAME_EXP);
+	std::regex regex_is_work(root.rj_only ? "^RJ[0-9]{3,8}(?![0-9])" : WORK_NAME_EXP);
 	std::regex regex_is_series(SERIES_NAME_EXP);
 	std::smatch match_result;
-	for (auto& dir : root)
-		if(std::filesystem::exists(dir))
-			for (auto& info : std::filesystem::directory_iterator(dir))
-				if(info.is_directory())
+	if(std::filesystem::exists(root.path))
+		for (auto& info : std::filesystem::directory_iterator(root.path))
+			if(info.is_directory())
+			{
+				auto path = info.path();
+				//需要获得wstring再转string,see w2s_u2c
+				std::string filename= w2s(path.filename().wstring());
+				if (std::regex_search(filename, match_result, regex_is_work))
+					ret.push_back(path);
+				else if (std::regex_search(filename, match_result, regex_is_series))
 				{
-					auto path = info.path();
-					//需要获得wstring再转string,see w2s_u2c
-					std::string filename= w2s(path.filename().wstring());
-					if (std::regex_search(filename, match_result, regex_is_work))
-						ret.push_back(path);
-					else if (std::regex_search(filename, match_result, regex_is_series))
+					for (auto& sub_info : std::filesystem::directory_iterator(path))
 					{
-						for (auto& sub_info : std::filesystem::directory_iterator(path))
-						{
-							std::string sub_filename = w2s(sub_info.path().filename().wstring());
-							if (std::regex_search(sub_filename, match_result, regex_is_work))
-								ret.push_back(sub_info.path());
-						}
+						if (root.rj_only && !sub_info.is_directory())
+							continue;
+						std::string sub_filename = w2s(sub_info.path().filename().wstring());
+						if (std::regex_search(sub_filename, match_result, regex_is_work))
+							ret.push_back(sub_info.path());
 					}
 				}
+			}
 	return ret;
 }
